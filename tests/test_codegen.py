@@ -353,6 +353,30 @@ def test_the_typescript_interfaces_are_generated() -> None:
     assert 'import type { Order } from "../types/order.ts";' in interface, interface
 
 
+def test_the_typescript_generic_return_type_is_generated() -> None:
+    """The arguments of a generic survive the lowering and the codegen."""
+    interface = _generate_typescript(GENERIC)["src/interfaces/payment_provider.ts"]
+
+    assert (
+        "charge(input: { amount: number }): Promise<Result<PaymentResponse, Error>>;"
+        in interface
+    ), interface
+    assert 'import type { Result } from "../runtime/result.ts";' in interface, interface
+
+
+def test_the_typescript_project_files_are_generated() -> None:
+    """The generated project must be runnable as an ES module without a build."""
+    files = _generate_typescript(HERO_SITE)
+
+    package = files["package.json"]
+    assert '"type": "module"' in package, package
+    assert '"start": "node main.ts"' in package, package
+
+    tsconfig = files["tsconfig.json"]
+    assert '"noEmit": true' in tsconfig, tsconfig
+    assert '"allowImportingTsExtensions": true' in tsconfig, tsconfig
+
+
 def test_the_typescript_dispatch_resolves_interface_methods() -> None:
     """The dispatcher resolves ``Interface::method`` through the bindings.
 
@@ -405,6 +429,8 @@ CHECKS = [
     test_the_typescript_bindings_are_registered,
     test_the_typescript_types_are_generated,
     test_the_typescript_interfaces_are_generated,
+    test_the_typescript_generic_return_type_is_generated,
+    test_the_typescript_project_files_are_generated,
     test_the_typescript_dispatch_resolves_interface_methods,
     test_the_typescript_runtime_is_shipped,
 ]

@@ -49,7 +49,7 @@ python tests/run_all.py
 | Proposal protocol self-check | 18/18 |
 | Package structure | 6/6 |
 | Pipeline integration | 18/18 |
-| Code generation | 24/24 |
+| Code generation | 26/26 |
 | SDL runtime | 10/10 |
 | Assignability | 17/17 |
 | Compatibility | 15/15 |
