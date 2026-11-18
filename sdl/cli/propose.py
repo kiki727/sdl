@@ -18,7 +18,7 @@ from sdl.document import load_schemas, validate_path
 from sdl.parser.ast import ASTProposal
 from sdl.parser.yaml_parser import SDLYamlParser, SDLParserError
 from sdl.proposal.engine import ProposalEngine
-from sdl.proposal.models import Patch, PatchAction, Proposal
+from sdl.proposal.models import MigrationEntry, Patch, PatchAction, Proposal
 
 
 def read_proposal(path: Path) -> Proposal:
@@ -41,12 +41,18 @@ def read_proposal(path: Path) -> Proposal:
         for patch in ast.patches
     ]
 
+    migration = [
+        MigrationEntry(type=entry.type, documents=list(entry.documents))
+        for entry in ast.migration
+    ]
+
     return Proposal(
         id=ast.id,
         target_version=ast.target_version,
         author=ast.author,
         rationale=ast.rationale,
         patches=patches,
+        migration=migration,
     )
 
 

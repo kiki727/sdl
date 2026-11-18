@@ -116,8 +116,9 @@ a key of a mapping or for the element of a list whose `id` is `name`, and
 
 Section 8.5 says the project version is incremented according to semver rules,
 and gives MAJOR as the example of a breaking change. The implementation
-increments MAJOR when a method signature changes, MINOR when a component is
-added or removed or a component version changes, and PATCH otherwise.
+increments MAJOR when a method signature changes in a way that breaks the
+contract of section 5.2, MINOR when a component is added or removed or a
+component version changes, and PATCH otherwise.
 
 ## 6. Implementation impact of C3
 
@@ -201,12 +202,24 @@ that names another language is a valid document: the specification is
 independent of the languages the toolchain speaks. The **build** refuses a
 target it cannot produce (`SDL-E605`), instead of producing something else.
 
-### 7.4 The version of a breaking change (section 5.4)
+### 7.4 The version of a breaking change (sections 4.3 and 5.4)
 
-Section 5.4 says a change that breaks a signature must increment the **MAJOR**
-version of the interface. The policy of section 4.3 only asks for a version
-increment; the stricter rule of section 5.4 is applied, so a signature change
-with a smaller version increment is refused (`SDL-E602`).
+Section 4.3 forbids a **breaking change** without a version increment, and
+section 5.4 says a change that breaks a signature must increment the **MAJOR**
+version of the interface. A change breaks the contract of section 5.2 when a
+client written against the old signature no longer works against the new one:
+
+* a parameter the client supplied is removed;
+* a parameter accepts less than it did, that is the old type is not assignable
+  to the new one (contravariance);
+* a parameter is added that the client cannot omit, that is one that is not
+  `Optional`;
+* the output is no longer assignable to what the client expected (covariance).
+
+A change that only widens the accepted inputs, only narrows the output, or
+only adds optional parameters is compatible. It does not break the contract,
+so neither section 4.3 nor section 5.4 applies to it, and the merge gives the
+project a PATCH or a MINOR increment rather than a MAJOR one.
 
 The version of the **project** follows section 8.5: MAJOR when the proposal
 breaks a contract, MINOR when a component is added or removed or a component
@@ -234,3 +247,34 @@ Section 8.4 orders the phases: syntactic, referential, policy, semantic. A
 target that names an element that does not exist is a **referential**
 failure, not a policy failure, so it is reported in the second phase
 (`SDL-E701`).
+
+### 7.7 The form of a migration plan (section 4.3.1)
+
+Section 4.3.1 requires a migration plan for every dependent module when a type
+definition changes, but does not define the form of the plan. The reading the
+toolchain implements is that the plan is a field of the proposal document:
+
+    proposal:
+      id: prop_greeting_extra_field
+      target_version: "1.0.0"
+      patches:
+        - target: "types.sdl.yaml:Greeting.fields"
+          action: replace
+          value:
+            message: String
+            language: String
+      migration:
+        - type: Greeting
+          documents:
+            - interfaces.sdl.yaml
+
+Each entry names the `type` that changed and the `documents` the plan covers.
+When the policy `require_migration_for_type_change` is on and a type
+definition changes, every document that depends on the type must be named by
+an entry of that type. A plan that names a document outside the project, or
+that omits a dependent document, is refused (`SDL-E602`). A type with no
+dependent document needs no plan, because there is nothing to migrate.
+
+The plan is a statement about the documents of the project, not about the code
+of an implementation: the code of an implementation changes outside of the
+protocol, exactly as it does for any other change.

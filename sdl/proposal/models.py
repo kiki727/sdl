@@ -52,6 +52,21 @@ class Patch:
 
 
 @dataclass
+class MigrationEntry:
+    """One entry of the migration plan of a proposal.
+
+    Specification section 4.3.1 requires a migration plan for every dependent
+    module when a type definition changes. The specification does not define
+    the form of the plan; the reading recorded in the changelog of Core 1.0 is
+    that the plan is a list of entries, each one naming the type that changed
+    and the documents that depend on it.
+    """
+
+    type: str
+    documents: List[str] = field(default_factory=list)
+
+
+@dataclass
 class Proposal:
     """A formal request for change."""
 
@@ -60,4 +75,6 @@ class Proposal:
     author: str = "unknown"
     rationale: str = ""
     patches: List[Patch] = field(default_factory=list)
+    #: The migration plan of section 4.3.1, when the project requires one.
+    migration: List[MigrationEntry] = field(default_factory=list)
     approve: bool = False

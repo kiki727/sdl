@@ -51,9 +51,9 @@ Required result: **all eleven groups pass**.
 * Pipeline integration: 18/18
 * Python back end: 12/12
 * SDL runtime: 10/10
-* Assignability: 11/11
+* Assignability: 17/17
 * Compatibility: 15/15
-* Proposal recipes: 24/24
+* Proposal recipes: 29/29
 * Every example document validates
 * The test suite changes nothing in the repository
 
@@ -103,13 +103,6 @@ What is left is not a layer but a breadth:
   produce (`SDL-E605`) instead of producing something else, and the rule of
   section 7.2 is only checked for the back ends the toolchain implements,
   because only those know which languages they can host.
-* **the migration plan.** Section 4.3 requires one for a changed type, but
-  does not say what it looks like. The implementation recognises it by the
-  proposal touching the documents that depend on the type.
-* **a more precise breaking change detection.** The policy of section 4.3
-  requires a version increment for *any* change of a signature, where the
-  specification only requires it for the changes that actually break the
-  contract. The implementation is deliberately stricter.
 * **the normalisation of a merged document.** A merged document is
   re-serialised, so its formatting is normalised. The content is preserved.
 

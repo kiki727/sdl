@@ -8,6 +8,47 @@ version in `VERSION` is the current core version of the working tree.
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+* The breaking-change policy of section 4.3 is now as precise as the contract
+  of section 5.2. A signature change is breaking only when a client written
+  against the old signature no longer works against the new one: a removed
+  parameter, a parameter that accepts less (contravariance), a new parameter
+  that is not `Optional`, or an output that is no longer assignable to what the
+  client expected (covariance). A change that only widens the inputs, only
+  narrows the output, or only adds optional parameters no longer requires a
+  version increment. The rule is applied both to the policy check
+  (`sdl/proposal/policy.py`) and to the project version of a merge
+  (`sdl/proposal/engine.py`), so the two agree.
+* The form of the migration plan of section 4.3.1 is defined: a `migration`
+  list on the proposal document, each entry naming the changed `type` and the
+  `documents` the plan covers. The plan is checked against the documents that
+  depend on the type, and a plan that omits one, or that names a document
+  outside the project, is refused (`SDL-E602`).
+* The resolver now records whether a parameter or a field is `Optional<T>`, so
+  a flow does not have to map a parameter the caller may omit.
+
+### Added
+
+* `sdl/types/assignability.py` — `assignable_expressions` and
+  `is_optional_expression`, the rules of section 6.7 applied to the type
+  *expressions* of the documents, so the proposal policy can decide a
+  signature change before the project is compiled.
+* Recipes: adding an optional parameter, a type change with a migration plan,
+  and a type change without one, with too narrow a plan, and with a document
+  that does not exist (`tests/recipes.py`, now 29 recipes).
+* `tests/test_assignability.py` — the expression-level rules.
+
+### Removed from the known gaps
+
+* the form of the migration plan is now defined and checked;
+* the policy no longer requires a version increment for a signature change that
+  does not break the contract.
+
+---
+
 ## [1.0] — consolidation
 
 The core was renamed from 0.3 to 1.0 during the 0.3 development cycle, but the
@@ -453,18 +494,12 @@ These are unchanged by this release and are tracked in the status table of
 `README.md`:
 
 * a merged document is re-serialised, so its formatting is normalised
-* the form of the migration plan that section 4.3 requires is not defined by
-  the specification; the implementation recognises it by the proposal touching
-  the documents that depend on the changed type
 * the back end targets Python only; the `backend.target` of a project may
   name another language, which no back end implements yet
 * the runtime resolves the source of an implementation from the file the
   specification declares; a module function is looked up in a Python module
   of the same name in the project root, because the specification does not
   say where the body of a module function lives
-* the policy of section 4.3 requires a version increment for any change of a
-  signature, where the specification only requires it for the changes that
-  actually break the contract. The implementation is deliberately stricter.
 
 ---
 

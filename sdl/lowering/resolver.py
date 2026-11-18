@@ -114,6 +114,19 @@ class SymbolResolver:
             UnresolvedReference(source=source, kind=kind, reference=reference, message=message)
         )
 
+    def _is_optional_reference(self, reference: TypeRef | None) -> bool:
+        """Whether a resolved reference is an ``Optional<T>``.
+
+        An optional parameter may be omitted by the caller, so a flow does not
+        have to map it. The declared type is the only source of that fact in
+        SDL. The base of a generic is the identifier of the type, not its name,
+        so the name is resolved through the graph.
+        """
+        if reference is None or reference.kind != "generic" or reference.base is None:
+            return False
+        symbol = self.graph.get_symbol(reference.base)
+        return symbol is not None and symbol.name == "Optional"
+
     def _resolve_name(self, name: str) -> SymbolId | None:
         """Resolve a type or symbol name in the project scope."""
         resolved = self.graph.resolve_symbol(name)
@@ -204,6 +217,7 @@ class SymbolResolver:
                 symbol.metadata.setdefault("field_type_arguments", {})[field.name] = list(arguments)
                 reference, _ = self._type_reference(str(field.type_id))
                 symbol.metadata.setdefault("field_type_refs", {})[field.name] = reference
+                field.optional = self._is_optional_reference(reference)
 
             expression = symbol.metadata.get("type_expression")
             if isinstance(expression, str) and expression:
@@ -243,6 +257,7 @@ class SymbolResolver:
                 parameter.type_arguments = arguments
                 reference, _ = self._type_reference(expression)
                 parameter.type_ref = reference
+                parameter.optional = self._is_optional_reference(reference)
                 self._add_edge(EdgeKind.HAS_PARAMETER, symbol.id, resolved)
 
             if symbol.return_type_id:

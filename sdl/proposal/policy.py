@@ -19,6 +19,7 @@ from typing import Any
 
 from sdl.documents import DocumentSet, SourceDocument
 from sdl.proposal.models import Proposal
+from sdl.types.assignability import assignable_expressions, is_optional_expression
 
 
 @dataclass
@@ -77,7 +78,12 @@ def _collect_ids(documents: DocumentSet) -> dict[str, set[str]]:
 
 
 def _collect_signatures(documents: DocumentSet) -> dict[str, tuple]:
-    """The signature of every method, keyed by interface and method."""
+    """The signature of every method, keyed by interface and method.
+
+    The signature is the mapping of the inputs and the output type, as the
+    documents write them. The mapping is kept as a mapping so that the
+    compatibility of a change can be decided per parameter.
+    """
     signatures: dict[str, tuple] = {}
     for document in documents.documents.values():
         root = _root(document)
@@ -103,10 +109,63 @@ def _collect_signatures(documents: DocumentSet) -> dict[str, tuple]:
                     output = output.get("type")
             key = f"{root.get('id', document.relative)}::{identifier}"
             signatures[key] = (
-                tuple(sorted((str(k), str(v)) for k, v in inputs.items())),
+                {str(name): str(expression) for name, expression in inputs.items()},
                 output if isinstance(output, str) else None,
             )
     return signatures
+
+
+def _signature_breaks(
+    before_inputs: dict[str, str],
+    before_output: str | None,
+    after_inputs: dict[str, str],
+    after_output: str | None,
+) -> bool:
+    """Whether a change of a signature breaks the contract of section 5.2.
+
+    A client written against the old signature must remain valid against the
+    new one. The signature breaks the contract when:
+
+    * a parameter the client supplied is gone;
+    * a parameter accepts less than it did (its old type is not assignable to
+      its new one, the contravariance rule of section 5.2);
+    * a parameter is added that the client cannot omit, that is one that is
+      not ``Optional``;
+    * the output is no longer assignable to what the client expected (the
+      covariance rule of section 5.2).
+
+    A change that only widens the accepted inputs, only narrows the output, or
+    only adds optional parameters is compatible, so it is not breaking and the
+    policy of section 4.3 does not require a version increment for it.
+    """
+    # A parameter the client supplied is gone.
+    for name in before_inputs:
+        if name not in after_inputs:
+            return True
+
+    # A parameter that accepts less than it did.
+    for name, old in before_inputs.items():
+        new = after_inputs.get(name)
+        if new is None:
+            continue
+        if not assignable_expressions(old, new):
+            return True
+
+    # A parameter the client cannot omit.
+    for name, new in after_inputs.items():
+        if name in before_inputs:
+            continue
+        if not is_optional_expression(new):
+            return True
+
+    # The output the client expected is no longer produced.
+    if before_output is not None:
+        if after_output is None:
+            return True
+        if not assignable_expressions(after_output, before_output):
+            return True
+
+    return False
 
 
 def _collect_contracts(documents: DocumentSet) -> set[str]:
@@ -196,6 +255,25 @@ def _dependents(documents: DocumentSet, type_name: str) -> set[str]:
     return dependents
 
 
+def _declared_migrations(proposal: Proposal) -> dict[str, set[str]]:
+    """The migration plan of a proposal, by the type it covers.
+
+    The plan is the list of entries of the proposal. Each entry names a type
+    and the documents the plan migrates. An entry that names the same type
+    twice adds to the coverage of that type.
+    """
+    declared: dict[str, set[str]] = {}
+    for entry in proposal.migration:
+        name = getattr(entry, "type", None)
+        if not isinstance(name, str) or not name:
+            continue
+        documents = getattr(entry, "documents", []) or []
+        declared.setdefault(name, set()).update(
+            str(document) for document in documents if isinstance(document, str)
+        )
+    return declared
+
+
 class PolicyChecker:
     """Checks a proposal against the policy of the project."""
 
@@ -275,6 +353,10 @@ class PolicyChecker:
                 continue
             if after[key] == signature:
                 continue
+            if not _signature_breaks(*signature, *after[key]):
+                # The change is compatible with the old signature, so it does
+                # not break the contract and the policy does not apply.
+                continue
             interface = key.split("::", 1)[0]
             old_version = versions_before.get(interface)
             new_version = versions_after.get(interface)
@@ -314,11 +396,19 @@ class PolicyChecker:
         patched: DocumentSet,
         proposal: Proposal,
     ) -> list[PolicyViolation]:
+        """Check the migration plan of a changed type.
+
+        Specification section 4.3.1: when a type definition changes and the
+        project requires a migration plan, the proposal must carry a plan for
+        every module that depends on the type. The form of the plan is the one
+        recorded in the changelog of Core 1.0: a list of entries, each one
+        naming the type that changed and the documents the plan covers.
+        """
         violations: list[PolicyViolation] = []
         before = _collect_types(original)
         after = _collect_types(patched)
-
-        touched = {patch.target for patch in proposal.patches}
+        declared = _declared_migrations(proposal)
+        known = set(original.documents)
 
         for name, shape in sorted(before.items()):
             if name not in after or after[name] == shape:
@@ -326,20 +416,44 @@ class PolicyChecker:
             dependents = _dependents(original, name)
             if not dependents:
                 continue
-            covered = any(
-                any(relative in target for target in touched)
-                for relative in dependents
-            )
-            if covered:
-                continue
-            violations.append(
-                PolicyViolation(
-                    code="SDL-E602",
-                    message=(
-                        f"The type {name} changes, but the proposal does not touch the "
-                        f"documents that depend on it: {', '.join(sorted(dependents))}. "
-                        f"The policy requires a migration plan for every dependent module."
-                    ),
+
+            covered = declared.get(name)
+            if covered is None:
+                violations.append(
+                    PolicyViolation(
+                        code="SDL-E602",
+                        message=(
+                            f"The type {name} changes, but the proposal carries no "
+                            f"migration plan for it. The policy requires a plan that "
+                            f"covers every dependent module: "
+                            f"{', '.join(sorted(dependents))}."
+                        ),
+                    )
                 )
-            )
+                continue
+
+            unknown = sorted(document for document in covered if document not in known)
+            if unknown:
+                violations.append(
+                    PolicyViolation(
+                        code="SDL-E602",
+                        message=(
+                            f"The migration plan of the type {name} names documents "
+                            f"that are not part of the project: {', '.join(unknown)}."
+                        ),
+                    )
+                )
+
+            missing = sorted(document for document in dependents if document not in covered)
+            if missing:
+                violations.append(
+                    PolicyViolation(
+                        code="SDL-E602",
+                        message=(
+                            f"The migration plan of the type {name} does not cover "
+                            f"every dependent module. It is missing: "
+                            f"{', '.join(missing)}."
+                        ),
+                    )
+                )
         return violations

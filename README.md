@@ -51,9 +51,9 @@ python tests/run_all.py
 | Pipeline integration | 18/18 |
 | Python back end | 12/12 |
 | SDL runtime | 10/10 |
-| Assignability | 11/11 |
+| Assignability | 17/17 |
 | Compatibility | 15/15 |
-| Proposal recipes | 24/24 |
+| Proposal recipes | 29/29 |
 | Every example document | 22/22 validate |
 | Examples unchanged by the test suite | yes |
 

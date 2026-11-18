@@ -47,6 +47,7 @@ from sdl.proposal.policy import (
     _collect_ids,
     _collect_signatures,
     _collect_versions,
+    _signature_breaks,
 )
 
 #: The phases of specification section 8.4, in order.
@@ -451,10 +452,12 @@ def _breaks_a_contract(original: DocumentSet, shadow: DocumentSet) -> bool:
     if set(before_signatures) - set(after_signatures):
         return True
 
-    # A method whose signature changed.
+    # A method whose signature changed in a way that breaks the contract. A
+    # compatible change (an added optional parameter, a widened input, a
+    # narrowed output) does not break a contract and is not a MAJOR change.
     for key, signature in before_signatures.items():
         other = after_signatures.get(key)
-        if other is not None and other != signature:
+        if other is not None and other != signature and _signature_breaks(*signature, *other):
             return True
 
     # An interface or a type that is gone.

@@ -25,7 +25,11 @@ from sdl.ir.symbols import (
     TypeSymbol,
 )
 from sdl.lowering.identity import symbol_id
-from sdl.types.assignability import TypeEnvironment
+from sdl.types.assignability import (
+    TypeEnvironment,
+    assignable_expressions,
+    is_optional_expression,
+)
 
 
 def _graph() -> SymbolGraph:
@@ -185,6 +189,60 @@ def test_an_alias_is_expanded() -> None:
     assert not environment.assignable(named("Money"), named("String"))
 
 
+# ---------------------------------------------------------------------------
+# The same rules, applied to the type expressions of the documents
+# ---------------------------------------------------------------------------
+#
+# The proposal policy of section 4.3 decides whether a change of a signature
+# breaks the contract of section 5.2 from the *documents*, before the project
+# is compiled. It applies the same rules to the written type expressions.
+
+
+def test_a_written_type_is_assignable_to_an_optional_of_it() -> None:
+    """T is assignable to Optional<T>, on the written expressions too."""
+    assert assignable_expressions("String", "Optional<String>")
+    assert not assignable_expressions("Optional<String>", "String")
+
+
+def test_a_written_type_is_nominal() -> None:
+    """Classes are nominal, and a written type is assignable to itself only."""
+    assert assignable_expressions("Payment", "Payment")
+    assert not assignable_expressions("Payment", "StripePayment")
+    assert not assignable_expressions("Int", "Decimal")
+
+
+def test_a_written_type_is_assignable_to_a_union_that_holds_it() -> None:
+    """T is assignable to T | U, and a union is assignable to V if every member is."""
+    assert assignable_expressions("String", "String | Int")
+    assert not assignable_expressions("Boolean", "String | Int")
+    assert assignable_expressions("String | String", "String")
+    assert not assignable_expressions("String | Boolean", "String | Int")
+
+
+def test_a_written_generic_is_invariant_unless_it_is_a_result() -> None:
+    """List and Map are invariant, Result is covariant."""
+    assert assignable_expressions("List<String>", "List<String>")
+    assert not assignable_expressions("List<String>", "List<Int>")
+    assert assignable_expressions("Result<String, Int>", "Result<String, Int>")
+    assert not assignable_expressions("Result<Int, Int>", "Result<String, Int>")
+
+
+def test_a_written_expression_that_cannot_be_read_is_not_assignable() -> None:
+    """A change the policy cannot understand is breaking, not safe."""
+    assert not assignable_expressions("String", "String<")
+    assert not assignable_expressions("nonsense", "String")
+    assert not assignable_expressions("String", "Optional<")
+
+
+def test_a_written_optional_is_recognised() -> None:
+    """The policy asks whether an added parameter can be omitted."""
+    assert is_optional_expression("Optional<String>")
+    assert is_optional_expression("Optional<List<String>>")
+    assert not is_optional_expression("String")
+    assert not is_optional_expression("List<String>")
+    assert not is_optional_expression("String<")
+
+
 CHECKS = [
     test_a_type_is_assignable_to_itself,
     test_a_type_is_not_assignable_to_another_one,
@@ -197,6 +255,12 @@ CHECKS = [
     test_a_result_is_covariant,
     test_the_unit_type_is_assignable_to_nothing,
     test_an_alias_is_expanded,
+    test_a_written_type_is_assignable_to_an_optional_of_it,
+    test_a_written_type_is_nominal,
+    test_a_written_type_is_assignable_to_a_union_that_holds_it,
+    test_a_written_generic_is_invariant_unless_it_is_a_result,
+    test_a_written_expression_that_cannot_be_read_is_not_assignable,
+    test_a_written_optional_is_recognised,
 ]
 
 

@@ -28,6 +28,7 @@ from sdl.parser.ast import (
     ASTInterface,
     ASTInterfaceRef,
     ASTMethod,
+    ASTMigration,
     ASTModule,
     ASTNode,
     ASTPatch,
@@ -288,8 +289,26 @@ class SDLYamlParser:
             author=str(root.get("author", "unknown")),
             rationale=str(root.get("rationale", "")),
             patches=patches,
+            migration=self._migration(root.get("migration"), parsed),
         )
         return self._place(node, parsed, ["proposal"])
+
+    def _migration(self, raw: Any, parsed: ParsedDocument) -> list[ASTMigration]:
+        """The migration plan of a proposal. Specification section 4.3.1."""
+        entries: list[ASTMigration] = []
+        if not isinstance(raw, list):
+            return entries
+        for index, item in enumerate(raw):
+            if not isinstance(item, dict):
+                continue
+            documents = item.get("documents")
+            entry = ASTMigration(
+                type=str(item.get("type", "")),
+                documents=[str(name) for name in documents] if isinstance(documents, list) else [],
+            )
+            self._place(entry, parsed, ["proposal", "migration", index])
+            entries.append(entry)
+        return entries
 
     # -- fragments -----------------------------------------------------------
 

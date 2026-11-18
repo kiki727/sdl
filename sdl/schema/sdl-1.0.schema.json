@@ -535,6 +535,20 @@
         "value": {}
       }
     },
+    "migrationEntry": {
+      "type": "object",
+      "required": ["type", "documents"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "$ref": "#/$defs/pascalId" },
+        "documents": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "$comment": "One entry of the migration plan of specification section 4.3.1: the type that changed and the documents that depend on it."
+    },
     "proposal": {
       "type": "object",
       "required": ["id", "target_version", "patches"],
@@ -551,6 +565,11 @@
         "patches": {
           "type": "array",
           "items": { "$ref": "#/$defs/patch" }
+        },
+        "migration": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/migrationEntry" },
+          "$comment": "The migration plan of specification section 4.3.1, required when the policy requires one and a type definition changes."
         }
       }
     },

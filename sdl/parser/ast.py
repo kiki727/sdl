@@ -268,3 +268,12 @@ class ASTProposal(ASTNode):
     author: str = "unknown"
     rationale: str = ""
     patches: list[ASTPatch] = field(default_factory=list)
+    migration: list["ASTMigration"] = field(default_factory=list)
+
+
+@dataclass
+class ASTMigration(ASTNode):
+    """One entry of the migration plan of a proposal."""
+
+    type: str = ""
+    documents: list[str] = field(default_factory=list)

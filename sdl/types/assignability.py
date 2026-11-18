@@ -24,6 +24,7 @@ from typing import Optional
 
 from sdl.ir.graph import SymbolGraph
 from sdl.ir.symbols import SymbolId, TypeKind, TypeRef, TypeSymbol
+from sdl.types import expressions as sdl_types
 
 #: The generic types that are invariant in their arguments.
 INVARIANT = ("List", "Map")
@@ -158,3 +159,133 @@ class TypeEnvironment:
 
     def _is_unit(self, reference: TypeRef) -> bool:
         return self._name_of(reference.base) == UNIT
+
+
+# ---------------------------------------------------------------------------
+# The same rule, applied to the written type expressions
+# ---------------------------------------------------------------------------
+#
+# The proposal policy of specification section 4.3 has to decide whether a
+# change of a signature breaks the contract of section 5.2, and it has to
+# decide it from the documents, before the project is compiled. The rule below
+# is the one of :class:`TypeEnvironment`, applied to the type *expressions*
+# instead of the resolved identifiers.
+#
+# SDL types are nominal and there is no inheritance between them, so the name
+# of a type is its identity: two named types are assignable only when they are
+# the same name. A type expression the parser cannot read is not assignable to
+# anything, so a change the policy cannot understand is treated as breaking
+# rather than as safe.
+
+
+def assignable_expressions(source: str, target: str) -> bool:
+    """Whether the source type expression is assignable to the target one.
+
+    ``source`` is assignable to ``target`` when a value of the source type may
+    be used where the target type is expected, per Core 0.2 section 6.7. An
+    expression that cannot be parsed is assignable to nothing.
+    """
+    if not isinstance(source, str) or not isinstance(target, str):
+        return False
+    try:
+        source_expression = sdl_types.parse(source)
+        target_expression = sdl_types.parse(target)
+    except sdl_types.TypeSyntaxError:
+        return False
+    return _assignable_expression(source_expression, target_expression, set())
+
+
+def is_optional_expression(text: str) -> bool:
+    """Whether a type expression is an ``Optional<T>``."""
+    if not isinstance(text, str):
+        return False
+    try:
+        expression = sdl_types.parse(text)
+    except sdl_types.TypeSyntaxError:
+        return False
+    return _is_optional_expression(expression)
+
+
+def _is_optional_expression(expression: sdl_types.TypeExpr) -> bool:
+    return isinstance(expression, sdl_types.TypeGeneric) and expression.name == OPTIONAL
+
+
+def _is_unit_expression(expression: sdl_types.TypeExpr) -> bool:
+    return isinstance(expression, sdl_types.TypeName) and expression.name == UNIT
+
+
+def _assignable_expression(
+    source: sdl_types.TypeExpr,
+    target: sdl_types.TypeExpr,
+    seen: set[tuple[str, str]],
+) -> bool:
+    """The rules of :meth:`TypeEnvironment._assignable`, on expressions."""
+    # T is assignable to T.
+    if isinstance(source, sdl_types.TypeName) and isinstance(target, sdl_types.TypeName):
+        return source.name == target.name
+
+    # Unit is not assignable to any other type.
+    if _is_unit_expression(source):
+        return _is_unit_expression(target)
+
+    # T is assignable to T | U.
+    if isinstance(target, sdl_types.TypeUnion):
+        return any(_assignable_expression(source, member, seen) for member in target.items)
+
+    # T | U is assignable to V if both T and U are assignable to V.
+    if isinstance(source, sdl_types.TypeUnion):
+        return all(_assignable_expression(member, target, seen) for member in source.items)
+
+    # T is assignable to Optional<T>.
+    if isinstance(source, sdl_types.TypeName) and _is_optional_expression(target):
+        return _assignable_expression(source, target.args[0], seen) if target.args else True
+
+    # Optional<T> is assignable to Optional<U> if T is assignable to U.
+    if _is_optional_expression(source) and _is_optional_expression(target):
+        if not source.args or not target.args:
+            return False
+        return _assignable_expression(source.args[0], target.args[0], seen)
+
+    if isinstance(source, sdl_types.TypeGeneric) and isinstance(target, sdl_types.TypeGeneric):
+        if source.name != target.name:
+            return False
+        if len(source.args) != len(target.args):
+            return False
+        key = (source.name, target.name)
+        if key in seen:
+            return False
+        seen = seen | {key}
+
+        if source.name in INVARIANT:
+            # List<T> and Map<K,V> are invariant.
+            return all(
+                _identical_expression(a, b) for a, b in zip(source.args, target.args)
+            )
+        if source.name in COVARIANT:
+            # Result<T,E> is covariant in T and E.
+            return all(
+                _assignable_expression(a, b, seen) for a, b in zip(source.args, target.args)
+            )
+        return all(
+            _identical_expression(a, b) for a, b in zip(source.args, target.args)
+        )
+
+    return False
+
+
+def _identical_expression(left: sdl_types.TypeExpr, right: sdl_types.TypeExpr) -> bool:
+    """Whether two type expressions are structurally the same."""
+    if isinstance(left, sdl_types.TypeName) and isinstance(right, sdl_types.TypeName):
+        return left.name == right.name
+    if isinstance(left, sdl_types.TypeGeneric) and isinstance(right, sdl_types.TypeGeneric):
+        return (
+            left.name == right.name
+            and len(left.args) == len(right.args)
+            and all(_identical_expression(a, b) for a, b in zip(left.args, right.args))
+        )
+    if isinstance(left, sdl_types.TypeUnion) and isinstance(right, sdl_types.TypeUnion):
+        return len(left.items) == len(right.items) and all(
+            any(_identical_expression(item, other) for other in right.items)
+            for item in left.items
+        )
+    return False

@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Callable
 
 from sdl.proposal.engine import ProposalEngine, ProposalResult
-from sdl.proposal.models import Patch, PatchAction, Proposal
+from sdl.proposal.models import MigrationEntry, Patch, PatchAction, Proposal
 
 #: The project every recipe runs against.
 HELLO = Path(__file__).resolve().parent.parent / "examples" / "hello"
@@ -56,6 +56,8 @@ class Recipe:
     target_version: str = "1.0.0"
     #: The build of the merged project must be refused by the toolchain.
     build_fails: bool = False
+    #: The migration plan of section 4.3.1, when the project requires one.
+    migration: list[MigrationEntry] = field(default_factory=list)
 
     def proposal(self) -> Proposal:
         """The proposal of the recipe."""
@@ -65,6 +67,7 @@ class Recipe:
             author="recipe",
             rationale=f"The recipe {self.name!r}.",
             patches=list(self.patches),
+            migration=list(self.migration),
             approve=self.approve,
         )
 
@@ -338,6 +341,42 @@ def setup_with_optional_greeter(root: Path) -> None:
     )
 
 
+def setup_with_optional_parameter(root: Path) -> None:
+    """Let the implementation accept the parameter the proposal adds.
+
+    The interface adds ``locale`` as ``Optional<String>``, so the flow does not
+    have to map it. The implementation has to accept it all the same, because
+    the contract of section 5.2 is about what the implementation can be asked
+    for, and the annotation is ``Optional`` to match.
+    """
+    source = root / "src" / "greeter.py"
+    source.write_text(
+        source.read_text(encoding="utf-8")
+        .replace(
+            "from dataclasses import dataclass",
+            "from dataclasses import dataclass\nfrom typing import Optional",
+        )
+        .replace(
+            "def greet(self, name: str) -> Greeting:",
+            "def greet(self, name: str, locale: Optional[str] = None) -> Greeting:",
+        ),
+        encoding="utf-8",
+    )
+
+
+def setup_requiring_migration(root: Path) -> None:
+    """Let the project require a migration plan for a changed type."""
+    project = root / "project.sdl.yaml"
+    project.write_text(
+        project.read_text(encoding="utf-8").replace(
+            "    disallow_breaking_changes: true",
+            "    disallow_breaking_changes: true\n"
+            "    require_migration_for_type_change: true",
+        ),
+        encoding="utf-8",
+    )
+
+
 def setup_with_unused_method(root: Path) -> None:
     """Add a method that no flow calls."""
     interfaces = root / "interfaces.sdl.yaml"
@@ -435,6 +474,35 @@ RECIPES: list[Recipe] = [
                 value={"message": "String", "language": "String"},
             )
         ],
+        expect="accepted",
+        version="1.0.1",
+    ),
+    Recipe(
+        name="add an optional parameter to a method",
+        rule="§5.2 an added optional parameter does not break the contract",
+        patches=[
+            Patch(
+                target="interfaces.sdl.yaml:methods[greet].inputs",
+                action=REPLACE,
+                value={"name": "String", "locale": "Optional<String>"},
+            )
+        ],
+        setup=setup_with_optional_parameter,
+        expect="accepted",
+        version="1.0.1",
+    ),
+    Recipe(
+        name="change a type with a migration plan for its dependents",
+        rule="§4.3.1 a changed type needs a migration plan for every dependent",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Greeting.fields",
+                action=REPLACE,
+                value={"message": "String", "language": "String"},
+            )
+        ],
+        setup=setup_requiring_migration,
+        migration=[MigrationEntry(type="Greeting", documents=["interfaces.sdl.yaml"])],
         expect="accepted",
         version="1.0.1",
     ),
@@ -671,6 +739,58 @@ RECIPES: list[Recipe] = [
                 target="interfaces.sdl.yaml:methods[greet].inputs",
                 action=REPLACE,
                 value={"name": "String", "locale": "String"},
+            )
+        ],
+        expect="rejected",
+        phase="policy",
+        code="SDL-E602",
+    ),
+    Recipe(
+        name="change a type without a migration plan",
+        rule="§4.3.1 a changed type needs a migration plan for every dependent",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Greeting.fields",
+                action=REPLACE,
+                value={"message": "String", "language": "String"},
+            )
+        ],
+        setup=setup_requiring_migration,
+        expect="rejected",
+        phase="policy",
+        code="SDL-E602",
+    ),
+    Recipe(
+        name="migrate a type but not every dependent",
+        rule="§4.3.1 the migration plan must cover every dependent module",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Greeting.fields",
+                action=REPLACE,
+                value={"message": "String", "language": "String"},
+            )
+        ],
+        setup=setup_requiring_migration,
+        migration=[MigrationEntry(type="Greeting", documents=["flow.sdl.yaml"])],
+        expect="rejected",
+        phase="policy",
+        code="SDL-E602",
+    ),
+    Recipe(
+        name="migrate a type with a document that does not exist",
+        rule="§4.3.1 the migration plan names documents of the project",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Greeting.fields",
+                action=REPLACE,
+                value={"message": "String", "language": "String"},
+            )
+        ],
+        setup=setup_requiring_migration,
+        migration=[
+            MigrationEntry(
+                type="Greeting",
+                documents=["interfaces.sdl.yaml", "nowhere.sdl.yaml"],
             )
         ],
         expect="rejected",
