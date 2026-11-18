@@ -10,7 +10,7 @@ section 7.1 defines it. The toolchain implements the ones listed in
 #: A project may name any language, because the specification is independent
 #: of the languages the toolchain happens to speak. The build refuses a
 #: target it cannot produce, rather than producing something else.
-IMPLEMENTED_TARGETS = ("python", "nodejs")
+IMPLEMENTED_TARGETS = ("python", "nodejs", "go")
 
 #: The code generator of each implemented target.
 #:
@@ -19,6 +19,7 @@ IMPLEMENTED_TARGETS = ("python", "nodejs")
 CODEGEN = {
     "python": ("sdl.backends.codegen.python_gen", "PythonCodegen"),
     "nodejs": ("sdl.backends.codegen.typescript_gen", "TypeScriptCodegen"),
+    "go": ("sdl.backends.codegen.go_gen", "GoCodegen"),
 }
 
 

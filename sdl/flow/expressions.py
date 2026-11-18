@@ -306,3 +306,68 @@ def _render_typescript_path(path: str, state: str) -> str:
     for part in parts[1:]:
         rendered += f".{part}"
     return rendered
+
+
+def _go_literal(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, str):
+        return json.dumps(value, ensure_ascii=False)
+    return str(value)
+
+
+def _render_go_value(
+    node: Node,
+    state: str,
+    field: str,
+) -> str:
+    """Render an operand of a comparison as a Go value."""
+    if isinstance(node, Literal):
+        return _go_literal(node.value)
+    if isinstance(node, Variable):
+        return _render_go_path(node.path, state, field)
+    return render_go(node, state, field)
+
+
+def _render_go_path(path: str, state: str, field: str) -> str:
+    parts = path.split(".")
+    rendered = f"{state}[{json.dumps(parts[0], ensure_ascii=False)}]"
+    for part in parts[1:]:
+        rendered = f"{field}({rendered}, {json.dumps(part, ensure_ascii=False)})"
+    return rendered
+
+
+def render_go(
+    node: Node,
+    state: str = "state",
+    field: str = "runtime.Field",
+    compare: str = "runtime.Compare",
+    truth: str = "runtime.Truth",
+) -> str:
+    """Render a condition as a Go expression of type ``bool``.
+
+    Go is statically typed and the Flow State is a ``map[string]any``, so a
+    state path becomes a call to the runtime helper that reads a field, a
+    comparison becomes either a direct comparison (for ``==`` and ``!=``) or a
+    call to the runtime that orders two dynamic values, and a bare variable is
+    coerced to a boolean. The result carries only the names of the state paths,
+    as string literals, so a condition cannot inject code into the source.
+    """
+    if isinstance(node, Literal):
+        return _go_literal(node.value)
+    if isinstance(node, Variable):
+        return f"{truth}({_render_go_path(node.path, state, field)})"
+    if isinstance(node, Not):
+        return f"!({render_go(node.operand, state, field, compare, truth)})"
+    if isinstance(node, Binary):
+        if node.operator in ("&&", "||"):
+            left = render_go(node.left, state, field, compare, truth)
+            right = render_go(node.right, state, field, compare, truth)
+            return f"({left} {node.operator} {right})"
+        left = _render_go_value(node.left, state, field)
+        right = _render_go_value(node.right, state, field)
+        if node.operator in (">", "<", ">=", "<="):
+            operator = json.dumps(node.operator, ensure_ascii=False)
+            return f"{compare}({left}, {right}, {operator})"
+        return f"({left} {node.operator} {right})"
+    raise TypeError(f"Unknown condition node: {node!r}")

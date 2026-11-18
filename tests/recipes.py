@@ -359,6 +359,41 @@ implementation:
     project.write_text(text, encoding="utf-8")
 
 
+def setup_with_go_implementation(root: Path) -> None:
+    """Add an implementation written in Go.
+
+    The Go back end of the toolchain can host it, so a project that names
+    ``go`` and binds it is valid; a project that names a target which cannot
+    host it is refused (``SDL-E606``).
+    """
+    _write(
+        root,
+        "go_implementation.sdl.yaml",
+        """sdl: "1.0"
+kind: implementation
+
+implementation:
+  id: greeter_go
+  version: "1.0.0"
+  implements:
+    - interface: Greeter
+      version: "1.0.0"
+  language: go
+  source:
+    file: "src/greeter.go"
+    symbol: Greeter
+""",
+    )
+    _write(root, "src/greeter.go", "package main\n\ntype Greeter struct{}\n")
+    project = root / "project.sdl.yaml"
+    text = project.read_text(encoding="utf-8")
+    text = text.replace(
+        '    - path: "flow.sdl.yaml"',
+        '    - path: "flow.sdl.yaml"\n    - path: "go_implementation.sdl.yaml"',
+    )
+    project.write_text(text, encoding="utf-8")
+
+
 def setup_with_optional_greeter(root: Path) -> None:
     """Let the implementation accept the parameter the proposal adds.
 
@@ -977,6 +1012,36 @@ RECIPES: list[Recipe] = [
         ],
         setup=setup_with_typescript_implementation,
         expect="accepted",
+    ),
+    Recipe(
+        name="point a go backend at a Go implementation",
+        rule="§7.2 the target must be compatible with the languages of the implementations",
+        patches=[
+            Patch(target="project.backend.target", action=REPLACE, value="go"),
+            Patch(
+                target="project.bindings[Greeter].implementation",
+                action=REPLACE,
+                value="greeter_go",
+            ),
+        ],
+        setup=setup_with_go_implementation,
+        expect="accepted",
+    ),
+    Recipe(
+        name="point a go backend at a TypeScript implementation",
+        rule="§7.2 the target must be compatible with the languages of the implementations",
+        patches=[
+            Patch(target="project.backend.target", action=REPLACE, value="go"),
+            Patch(
+                target="project.bindings[Greeter].implementation",
+                action=REPLACE,
+                value="greeter_ts",
+            ),
+        ],
+        setup=setup_with_typescript_implementation,
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E606",
     ),
     Recipe(
         name="patch a document that does not exist",

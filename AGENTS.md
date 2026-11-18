@@ -49,11 +49,11 @@ Required result: **all eleven groups pass**.
 * Proposal protocol self-check: 18/18
 * Package structure: 6/6
 * Pipeline integration: 24/24
-* Code generation: 28/28
+* Code generation: 39/39
 * SDL runtime: 10/10
 * Assignability: 20/20
 * Compatibility: 15/15
-* Proposal recipes: 97/97
+* Proposal recipes: 99/99
 * Every example document validates
 * The test suite changes nothing in the repository
 
@@ -99,8 +99,8 @@ python -m sdl run examples/payment_system/project.sdl.yaml --flow process_custom
 What is left is not a layer but a breadth:
 
 * **other back ends.** The `backend.target` of a project may name another
-  language. Python and NodeJS/TypeScript are implemented. The build refuses a
-  target it cannot produce (`SDL-E605`) instead of producing something else,
+  language. Python, NodeJS/TypeScript and Go are implemented. The build refuses
+  a target it cannot produce (`SDL-E605`) instead of producing something else,
   and the rule of section 7.2 is only checked for the back ends the toolchain
   implements, because only those know which languages they can host.
 * **the normalisation of a merged document.** A merged document is
@@ -117,13 +117,15 @@ A back end is selected by the `backend.target` of the project, through
 `sdl.backends.codegen_for`. `IMPLEMENTED_TARGETS` is the list of the targets
 the toolchain can produce, and `sdl.backends.CODEGEN` maps each to its
 generator. The Python back end is `sdl/backends/codegen/python_gen.py`, the
-NodeJS one is `sdl/backends/codegen/typescript_gen.py`.
+NodeJS one is `sdl/backends/codegen/typescript_gen.py`, the Go one is
+`sdl/backends/codegen/go_gen.py`.
 
-The generated source must satisfy three rules, for either back end:
+The generated source must satisfy three rules, for any back end:
 
 * it must be **valid in its language**. Every generated Python file is parsed
-  by the test suite, and every generated TypeScript file is run by Node, which
-  strips the types.
+  by the test suite, every generated TypeScript file is run by Node, which
+  strips the types, and every generated Go project is built with
+  `go build ./...`.
 * it must be **deterministic**. The same canonical IR produces the same
   bytes.
 * it must not carry **anything the document wrote as raw text**. A condition
@@ -140,6 +142,16 @@ can run the source by stripping the types; an SDL enum is written as a union
 type and a `const` object. The checks that need Node are skipped, with a
 printed note, when no Node with `--experimental-strip-types` is on the `PATH`;
 CI installs one.
+
+Two things are specific to Go. Go has no keyword arguments and no dynamic
+typing, so the inputs of a method travel as a single `map[string]any`, the way
+the runtime calls it, and the Flow State is a `map[string]any`, so a path into
+it is read with the runtime helper `Field` rather than with a field selector.
+The dispatcher reaches the method of an implementation by reflection
+(`reflect.Value.MethodByName`), the way JavaScript reaches a property, so a
+step that names `Interface::method` resolves through the bindings table. The
+checks that need the Go toolchain are skipped, with a printed note, when no
+`go` is on the `PATH`; CI installs one.
 
 ### The runtime
 

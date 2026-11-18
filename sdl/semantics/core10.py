@@ -1262,6 +1262,7 @@ class ProjectContext:
     HOSTED_LANGUAGES: dict[str, frozenset[str]] = {
         "python": frozenset({"python"}),
         "nodejs": frozenset({"typescript", "javascript"}),
+        "go": frozenset({"go"}),
     }
 
     def _check_backend(self) -> None:

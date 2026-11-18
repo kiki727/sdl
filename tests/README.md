@@ -13,19 +13,20 @@ This runs, in order:
 3. the proposal protocol self-check — 18 checks
 4. the package structure check — 6 checks
 5. the pipeline integration test — 24 checks
-6. the code generation test — 28 checks
+6. the code generation test — 39 checks
 7. the SDL runtime test — 10 checks
 8. the assignability test — 20 checks
 9. the compatibility test — 15 checks
-10. the proposal recipes — 97 checks
+10. the proposal recipes — 99 checks
 11. validation of every example document
 
 It exits non-zero if any of the groups fails.
 
 The code generation test runs the generated TypeScript with Node, which strips
-the types. Those checks are skipped, with a printed note, when no Node with
-`--experimental-strip-types` (Node 22.6 and later) is on the `PATH`. Everything
-else needs only Python.
+the types, and builds the generated Go with `go build ./...`. Those checks are
+skipped, with a printed note, when no Node with `--experimental-strip-types`
+(Node 22.6 and later) or no Go toolchain is on the `PATH`. Everything else
+needs only Python.
 
 It also verifies that the test suite changed nothing in the repository. The
 proposal protocol writes to the documents, so every test that merges a

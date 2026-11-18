@@ -1,4 +1,4 @@
-"""Tests of the code generators, the Python and the NodeJS back end.
+"""Tests of the code generators, the Python, the NodeJS and the Go back end.
 
 The generated source must be valid in its language, it must be deterministic,
 and it must not carry anything the document wrote as raw text.
@@ -17,6 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from sdl.backends import IMPLEMENTED_TARGETS, codegen_for
+from sdl.backends.codegen.go_gen import GoCodegen
 from sdl.backends.codegen.python_gen import PythonCodegen
 from sdl.backends.codegen.typescript_gen import TypeScriptCodegen
 from sdl.compiler import compile_project
@@ -40,6 +41,12 @@ def _generate_typescript(entry: Path) -> dict[str, str]:
     result = compile_project(entry)
     assert result.ok, result.report.as_dict()
     return TypeScriptCodegen(result.graph).generate()
+
+
+def _generate_go(entry: Path) -> dict[str, str]:
+    result = compile_project(entry)
+    assert result.ok, result.report.as_dict()
+    return GoCodegen(result.graph).generate()
 
 
 # ---------------------------------------------------------------------------
@@ -251,8 +258,10 @@ def test_a_target_selects_its_code_generator() -> None:
     """The target of the project picks the back end, not a fixed default."""
     assert "python" in IMPLEMENTED_TARGETS, IMPLEMENTED_TARGETS
     assert "nodejs" in IMPLEMENTED_TARGETS, IMPLEMENTED_TARGETS
+    assert "go" in IMPLEMENTED_TARGETS, IMPLEMENTED_TARGETS
     assert codegen_for("python") is PythonCodegen, "python does not select its back end"
     assert codegen_for("nodejs") is TypeScriptCodegen, "nodejs does not select its back end"
+    assert codegen_for("go") is GoCodegen, "go does not select its back end"
     assert codegen_for(None) is PythonCodegen, "no target must fall back to Python"
 
 
@@ -443,6 +452,239 @@ def test_the_typescript_runtime_is_shipped() -> None:
         assert name in files, f"{name} is missing from the generated project"
 
 
+# ---------------------------------------------------------------------------
+# The Go back end
+# ---------------------------------------------------------------------------
+
+
+def _go_available() -> bool:
+    """Whether a Go toolchain is on the PATH.
+
+    The checks that need to *build* the generated Go are skipped, with a
+    printed note, when Go is not installed.
+    """
+    return shutil.which("go") is not None
+
+
+def _go_folder(files: dict[str, str]) -> "tempfile.TemporaryDirectory[str]":
+    """Write the generated files into a fresh temporary directory."""
+    folder = tempfile.TemporaryDirectory()
+    root = Path(folder.name)
+    for name, content in files.items():
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    return folder
+
+
+def _run_go(files: dict[str, str]) -> None:
+    """Build the generated Go, and vet it, with the Go toolchain."""
+    go = shutil.which("go")
+    assert go is not None, "Go is not on the PATH"
+    folder = _go_folder(files)
+    try:
+        for command in (["build", "./..."], ["vet", "./..."]):
+            result = subprocess.run(
+                [go, *command],
+                cwd=folder.name,
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+            assert result.returncode == 0, (
+                f"go {' '.join(command)} refused the generated source:\n{result.stderr}"
+            )
+    finally:
+        folder.cleanup()
+
+
+#: A Go test that registers an implementation and runs a generated flow, to
+#: prove that the dispatcher resolves ``Interface::method`` through the
+#: bindings at run time. ``MODULE`` is replaced with the module of ``go.mod``.
+GO_DISPATCH_TEST = '''package main
+
+import (
+	"testing"
+
+	"MODULE/flows"
+	"MODULE/runtime"
+	"MODULE/types"
+)
+
+type fakePriorityService struct{}
+
+func (service *fakePriorityService) Rank(args map[string]any) (any, error) {
+	return types.Priority("high"), nil
+}
+
+func TestTheFlowDispatchesThroughTheRegistry(t *testing.T) {
+	registry := runtime.NewRegistry()
+	registry.Register("PriorityService", &fakePriorityService{})
+	outputs, err := flows.DescribeOrder([]string{}, types.Order{}, registry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if outputs["priority"] != types.Priority("high") {
+		t.Fatalf("the flow returned %v", outputs["priority"])
+	}
+}
+'''
+
+
+def _run_go_test(files: dict[str, str]) -> None:
+    """Run the Go test suite of a generated project."""
+    go = shutil.which("go")
+    assert go is not None, "Go is not on the PATH"
+    folder = _go_folder(files)
+    try:
+        result = subprocess.run(
+            [go, "test", "./..."],
+            cwd=folder.name,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        assert result.returncode == 0, (
+            f"the generated Go did not run:\n{result.stdout}\n{result.stderr}"
+        )
+    finally:
+        folder.cleanup()
+
+
+def test_the_go_generation_is_deterministic() -> None:
+    """The same specification must always produce the same Go."""
+    first = _generate_go(TYPESCRIPT)
+    second = _generate_go(TYPESCRIPT)
+    assert first == second, "two generations of the same project differ"
+
+
+def test_the_generated_go_is_valid() -> None:
+    """Every generated project must build and vet with the Go toolchain."""
+    if not _go_available():
+        print("      SKIP: no Go toolchain on the PATH")
+        return
+    _run_go(_generate_go(PAYMENT))
+    _run_go(_generate_go(HERO_SITE))
+    _run_go(_generate_go(TYPESCRIPT))
+    _run_go(_generate_go(CONDITIONAL))
+    _run_go(_generate_go(GENERIC))
+
+
+def test_the_go_flow_has_an_explicit_data_flow() -> None:
+    """A step writes its output into the state, and reads it from the state."""
+    flow = _generate_go(TYPESCRIPT)["flows/describe_order.go"]
+
+    assert 'state["priority"] = _result' in flow, flow
+    assert 'map[string]any{"order": state["order"]}' in flow, flow
+
+
+def test_a_go_condition_is_parsed_and_rendered() -> None:
+    """A condition becomes a Go expression, never a copy of the text."""
+    flow = _generate_go(TYPESCRIPT)["flows/describe_order.go"]
+
+    assert 'order.priority == "high"' not in flow, "the condition was copied as text"
+    assert 'runtime.Field(state["order"], "priority") == "high"' in flow, flow
+
+
+def test_the_go_error_strategies_are_generated() -> None:
+    """Every error strategy of the specification reaches the Go."""
+    flow = _generate_go(CONDITIONAL)["flows/conditional_flow.go"]
+
+    assert "runtime.CallWithRetry" in flow, "the retry strategy is missing"
+    assert "Attempts: 3" in flow, "the retry policy is missing"
+    assert 'Backoff: "exponential"' in flow, "the backoff strategy is missing"
+    assert "_result = nil" in flow, "the ignore strategy is missing"
+    assert "continue" in flow, "the goto strategy is missing"
+
+
+def test_the_go_bindings_are_registered() -> None:
+    """The registry registers what the specification binds."""
+    main = _generate_go(HERO_SITE)["main.go"]
+
+    assert (
+        'registry.Register("ContentProvider", &implementations.JsonContentProvider{})' in main
+    ), main
+    assert (
+        'registry.Register("TemplateEngine", &implementations.HandlebarsEngine{})' in main
+    ), main
+
+
+def test_the_go_types_are_generated() -> None:
+    """A compound type, an enum and an alias become the right declarations."""
+    files = _generate_go(TYPESCRIPT)
+
+    order = files["types/order.go"]
+    assert "type Order struct {" in order, order
+    assert "Note *string" in order, order
+    assert "Tags []string" in order, order
+    assert "Links []*string" in order, order
+    assert "Scores map[string]int" in order, order
+    assert "Mixed any" in order, order
+
+    priority = files["types/priority.go"]
+    assert "type Priority string" in priority, priority
+    assert 'PriorityHigh Priority = "high"' in priority, priority
+
+    reference = files["types/reference.go"]
+    assert "type Reference = string" in reference, reference
+
+    deep = files["types/deep.go"]
+    assert "type Deep = []*string" in deep, deep
+
+
+def test_the_go_interface_is_a_contract() -> None:
+    """An interface becomes a Go interface, and the implementation asserts it."""
+    files = _generate_go(TYPESCRIPT)
+
+    interface = files["interfaces/priority_service.go"]
+    assert "type PriorityService interface {" in interface, interface
+    assert "Rank(args map[string]any) (any, error)" in interface, interface
+
+    implementation = files["implementations/local_priority_service.go"]
+    assert (
+        "var _ interfaces.PriorityService = (*LocalPriorityService)(nil)" in implementation
+    ), implementation
+
+
+def test_the_go_dispatch_resolves_interface_methods() -> None:
+    """The dispatcher resolves ``Interface::method`` through the bindings.
+
+    Specification section 6.2: a step that names a method of an interface is
+    resolved through the bindings table. The generated dispatcher must do the
+    same, or a flow could not call the implementation the project bound.
+    """
+    dispatch = _generate_go(HERO_SITE)["runtime/dispatch.go"]
+
+    assert 'strings.Cut(target, "::")' in dispatch, dispatch
+    assert "MethodByName(exported(member))" in dispatch, dispatch
+
+
+def test_the_go_runtime_is_shipped() -> None:
+    """The runtime the flows need must be generated with them."""
+    files = _generate_go(HERO_SITE)
+
+    for name in (
+        "runtime/registry.go",
+        "runtime/errors.go",
+        "runtime/dispatch.go",
+        "runtime/values.go",
+        "runtime/result.go",
+        "go.mod",
+    ):
+        assert name in files, f"{name} is missing from the generated project"
+
+
+def test_the_go_runtime_dispatches_an_interface_method() -> None:
+    """A generated flow must call the bound implementation at run time."""
+    if not _go_available():
+        print("      SKIP: no Go toolchain on the PATH")
+        return
+    files = _generate_go(TYPESCRIPT)
+    module = files["go.mod"].split()[1]
+    files["dispatch_test.go"] = GO_DISPATCH_TEST.replace("MODULE", module)
+    _run_go_test(files)
+
+
 CHECKS = [
     test_the_generated_source_compiles,
     test_the_generated_source_of_every_strategy_compiles,
@@ -472,6 +714,17 @@ CHECKS = [
     test_the_typescript_project_files_are_generated,
     test_the_typescript_dispatch_resolves_interface_methods,
     test_the_typescript_runtime_is_shipped,
+    test_the_go_generation_is_deterministic,
+    test_the_generated_go_is_valid,
+    test_the_go_flow_has_an_explicit_data_flow,
+    test_a_go_condition_is_parsed_and_rendered,
+    test_the_go_error_strategies_are_generated,
+    test_the_go_bindings_are_registered,
+    test_the_go_types_are_generated,
+    test_the_go_interface_is_a_contract,
+    test_the_go_dispatch_resolves_interface_methods,
+    test_the_go_runtime_is_shipped,
+    test_the_go_runtime_dispatches_an_interface_method,
 ]
 
 

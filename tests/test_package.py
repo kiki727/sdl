@@ -31,6 +31,7 @@ LAYERS = [
     "sdl.proposal.engine",
     "sdl.backends.codegen.python_gen",
     "sdl.backends.codegen.typescript_gen",
+    "sdl.backends.codegen.go_gen",
     "sdl.cli.validate",
 ]
 

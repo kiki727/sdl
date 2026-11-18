@@ -61,6 +61,24 @@ version in `VERSION` is the current core version of the working tree.
   as text, and the dispatcher resolves an interface method through the
   bindings. A new fixture, `tests/fixtures/typescript/`, exercises an enum, an
   alias, `Optional`, `List`, `Map`, a condition and an error strategy.
+* The **Go back end** (`sdl/backends/codegen/go_gen.py`), selected by
+  `backend.target: go`. It generates the types as structs, an SDL enum as a
+  string type with constants, the interfaces as Go interfaces, the flows as
+  functions with an explicit data flow, and a small runtime (a registry, a
+  dispatcher that resolves `Interface::method` through the bindings by
+  reflection, the `Field`/`Truth`/`Compare` helpers a condition needs, and a
+  `Result` type). The inputs of a method travel as a `map[string]any` and the
+  Flow State is a `map[string]any`, because Go has no keyword arguments and no
+  dynamic typing. The generated project uses nothing but the standard library,
+  and `sdl/semantics/core10.py` now knows that `go` hosts Go.
+* `sdl/flow/expressions.py` — `render_go`, the Go counterpart of
+  `render_python`, so a condition is parsed and rendered rather than copied.
+* `tests/test_codegen.py` — checks of the Go back end: the generation is
+  deterministic, every generated project builds and vets with `go build ./...`
+  and `go vet ./...`, a condition is not copied as text, and a generated flow
+  calls the bound implementation at run time through the registry. The checks
+  that need the Go toolchain are skipped, with a printed note, when no `go` is
+  on the `PATH`.
 * `sdl/types/assignability.py` — `assignable_expressions` and
   `is_optional_expression`, the rules of section 6.7 applied to the type
   *expressions* of the documents, so the proposal policy can decide a
@@ -81,13 +99,14 @@ version in `VERSION` is the current core version of the working tree.
   (`SDL-E603`). Three more fix the transparency of an alias: an alias used as
   the type of a flow input, a parameter changed to an alias of its own type
   (both accepted), and a parameter changed to an alias of another type (still a
-  breaking change, `SDL-E602`). `tests/recipes.py` is now 97 recipes: a large
+  breaking change, `SDL-E602`). `tests/recipes.py` is now 99 recipes: a large
   batch covering error handling and retry (section 3.3.1), flow outputs and
   state (sections 2.2.1 and 2.3.3), the type-expression rules inherited from
   Core 0.2 (section 4.2), the interface and implementation rules (sections 5
   and 6), invariants (section 4.2.1), bindings (section 6.2), identifiers
   (section 4.3), imports (section 4.1), the schema, the back end (section 7)
-  and the protocol itself (section 8).
+  and the protocol itself (section 8), plus pointing a `go` back end at a Go
+  implementation (accepted) and at a TypeScript one (`SDL-E606`).
 * `tests/test_assignability.py` — the expression-level rules, now including the
   expansion of an alias, of an alias of an `Optional`, and of an alias cycle.
 
@@ -103,10 +122,10 @@ version in `VERSION` is the current core version of the working tree.
   type `Optional<T>` is now marked optional, which the TypeScript interface
   writes as `field?: T | null`. The resolver stays repeatable: a second pass
   over the same graph reproduces it byte for byte.
-* The code generation test is now 28 checks: it covers a union, a nested
-  generic and a generic flow input in both back ends. The pipeline integration
-  test gained a check that the resolver is repeatable
-  (`tests/test_integration.py`).
+* The code generation test is now 39 checks: it covers a union, a nested
+  generic and a generic flow input in every back end, and the Go back end in
+  full. The pipeline integration test gained a check that the resolver is
+  repeatable (`tests/test_integration.py`).
 * A merged document keeps its comments and its blank lines. The data of a
   document carries neither — the YAML parser drops them — so a document that a
   proposal changed used to be written back without them. They are now read out
@@ -156,6 +175,8 @@ version in `VERSION` is the current core version of the working tree.
 
 * a project whose `backend.target` is `nodejs` now builds, so `examples/hero_site`
   compiles to TypeScript;
+* a project whose `backend.target` is `go` now builds, so a project compiles to
+  Go;
 * the form of the migration plan is now defined and checked;
 * the policy no longer requires a version increment for a signature change that
   does not break the contract;
