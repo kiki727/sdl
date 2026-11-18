@@ -111,9 +111,6 @@ must not assume they are enforced until the corresponding status row in
 
 - A merged document is re-serialised, so its formatting is normalised. The
   content is preserved, the layout is not.
-- The migration plan that the policy of section 4.3 requires for a changed
-  type is recognised by the proposal touching the documents that depend on
-  the type. The specification does not define the form of a migration plan.
 
 ## 6. What the engine already enforces
 
@@ -143,3 +140,9 @@ must not assume they are enforced until the corresponding status row in
 * A merged proposal leaves the project in a valid state.
 * The `add` action adds an element to a list, or a field to a mapping. The
   target names the collection that receives the value.
+* A type definition that changes needs a migration plan when the project turns
+  on `require_migration_for_type_change`. The plan is the `migration` field of
+  the proposal document: each entry names a `type` and the `documents` the plan
+  covers, and every document that depends on the changed type must be named. A
+  plan that names a document outside the project, or that omits a dependent
+  document, is refused with `SDL-E602`.

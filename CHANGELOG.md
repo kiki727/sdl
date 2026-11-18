@@ -79,6 +79,10 @@ version in `VERSION` is the current core version of the working tree.
   generic and a generic flow input in both back ends. The pipeline integration
   test gained a check that the resolver is repeatable
   (`tests/test_integration.py`).
+* `LLM_CONTRACT.md` no longer lists the form of a migration plan as undefined.
+  The plan of section 4.3.1 is defined and enforced, so the limitation was
+  stale; the contract now states the rule among the ones the engine already
+  enforces.
 
 ### Removed from the known gaps
 
