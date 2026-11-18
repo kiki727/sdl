@@ -15,9 +15,9 @@ This runs, in order:
 5. the pipeline integration test — 24 checks
 6. the code generation test — 28 checks
 7. the SDL runtime test — 10 checks
-8. the assignability test — 17 checks
+8. the assignability test — 20 checks
 9. the compatibility test — 15 checks
-10. the proposal recipes — 41 checks
+10. the proposal recipes — 44 checks
 11. validation of every example document
 
 It exits non-zero if any of the groups fails.

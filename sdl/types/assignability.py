@@ -178,12 +178,21 @@ class TypeEnvironment:
 # rather than as safe.
 
 
-def assignable_expressions(source: str, target: str) -> bool:
+def assignable_expressions(
+    source: str,
+    target: str,
+    source_aliases: dict[str, str] | None = None,
+    target_aliases: dict[str, str] | None = None,
+) -> bool:
     """Whether the source type expression is assignable to the target one.
 
     ``source`` is assignable to ``target`` when a value of the source type may
     be used where the target type is expected, per Core 0.2 section 6.7. An
     expression that cannot be parsed is assignable to nothing.
+
+    An alias map, when it is given, is applied to the expression before the
+    rule. An alias is transparent (section 9.3.2), so a change that only
+    writes a type through its alias is not a change of type.
     """
     if not isinstance(source, str) or not isinstance(target, str):
         return False
@@ -192,18 +201,73 @@ def assignable_expressions(source: str, target: str) -> bool:
         target_expression = sdl_types.parse(target)
     except sdl_types.TypeSyntaxError:
         return False
+    if source_aliases:
+        source_expression = expand_aliases(source_expression, source_aliases)
+    if target_aliases:
+        target_expression = expand_aliases(target_expression, target_aliases)
     return _assignable_expression(source_expression, target_expression, set())
 
 
-def is_optional_expression(text: str) -> bool:
-    """Whether a type expression is an ``Optional<T>``."""
+def is_optional_expression(text: str, aliases: dict[str, str] | None = None) -> bool:
+    """Whether a type expression is an ``Optional<T>``.
+
+    An alias map, when it is given, is applied first, so an alias of an
+    ``Optional<T>`` is recognised as one.
+    """
     if not isinstance(text, str):
         return False
     try:
         expression = sdl_types.parse(text)
     except sdl_types.TypeSyntaxError:
         return False
+    if aliases:
+        expression = expand_aliases(expression, aliases)
     return _is_optional_expression(expression)
+
+
+def expand_aliases(
+    expression: sdl_types.TypeExpr,
+    aliases: dict[str, str],
+) -> sdl_types.TypeExpr:
+    """Replace every alias in a type expression with what it stands for.
+
+    Specification section 9.3.2: an alias is transparent, so it is replaced by
+    its base type before a rule is applied. A cycle is left as it is, so the
+    expansion always terminates.
+    """
+    return _expand_aliases(expression, aliases, frozenset())
+
+
+def _expand_aliases(
+    expression: sdl_types.TypeExpr,
+    aliases: dict[str, str],
+    seen: frozenset[str],
+) -> sdl_types.TypeExpr:
+    if isinstance(expression, sdl_types.TypeName):
+        name = expression.name
+        target = aliases.get(name)
+        if target is None and "::" in name:
+            target = aliases.get(name.split("::", 1)[1])
+        if target is None or name in seen:
+            return expression
+        try:
+            parsed = sdl_types.parse(target)
+        except sdl_types.TypeSyntaxError:
+            return expression
+        return _expand_aliases(parsed, aliases, seen | {name})
+
+    if isinstance(expression, sdl_types.TypeGeneric):
+        return sdl_types.TypeGeneric(
+            expression.name,
+            tuple(_expand_aliases(argument, aliases, seen) for argument in expression.args),
+        )
+
+    if isinstance(expression, sdl_types.TypeUnion):
+        return sdl_types.TypeUnion(
+            tuple(_expand_aliases(item, aliases, seen) for item in expression.items)
+        )
+
+    return expression
 
 
 def _is_optional_expression(expression: sdl_types.TypeExpr) -> bool:

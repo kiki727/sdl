@@ -51,9 +51,9 @@ Required result: **all eleven groups pass**.
 * Pipeline integration: 24/24
 * Code generation: 28/28
 * SDL runtime: 10/10
-* Assignability: 17/17
+* Assignability: 20/20
 * Compatibility: 15/15
-* Proposal recipes: 41/41
+* Proposal recipes: 44/44
 * Every example document validates
 * The test suite changes nothing in the repository
 

@@ -29,6 +29,14 @@ version in `VERSION` is the current core version of the working tree.
   outside the project, is refused (`SDL-E602`).
 * The resolver now records whether a parameter or a field is `Optional<T>`, so
   a flow does not have to map a parameter the caller may omit.
+* An alias is transparent (section 9.3.2) wherever the assignability rules of
+  section 6.7 are applied. The type checker of a flow, and the breaking-change
+  policy of section 4.3, expand an alias to its base type before comparing, so
+  a change that only writes a type through its alias is neither a type mismatch
+  nor a breaking change. `sdl/types/assignability.py` gains `expand_aliases`,
+  and `assignable_expressions` and `is_optional_expression` take an optional
+  alias map. The policy and the version of a merge both use it, so the two
+  agree.
 * The generated runtime of the Python back end resolves a step that names an
   interface method (`Interface::method`) through the bindings table, as section
   6.2 requires and as the interpreter already did. The generated dispatcher had
@@ -70,8 +78,12 @@ version in `VERSION` is the current core version of the working tree.
   in the same proposal. Three more touch other domains of a project: an import
   of a document that does not exist (`SDL-E302`), an enum type (accepted, a
   MINOR change), and a second binding for an interface that already has one
-  (`SDL-E603`). `tests/recipes.py` is now 41 recipes.
-* `tests/test_assignability.py` — the expression-level rules.
+  (`SDL-E603`). Three more fix the transparency of an alias: an alias used as
+  the type of a flow input, a parameter changed to an alias of its own type
+  (both accepted), and a parameter changed to an alias of another type (still a
+  breaking change, `SDL-E602`). `tests/recipes.py` is now 44 recipes.
+* `tests/test_assignability.py` — the expression-level rules, now including the
+  expansion of an alias, of an alias of an `Optional`, and of an alias cycle.
 
 ### Fixed
 
@@ -463,6 +475,14 @@ covered by a recipe or a regression test now.
   declare slipped past phase two. A reference nested in a value — a method
   input, a field type, an `outputs.type` — was never looked at at all. Both
   are `SDL-E702` in the referential phase now.
+* **An alias was not transparent.** Section 9.3.2 says an alias is replaced by
+  its base type. The type checker of a flow compared the *identifiers* of the
+  state and of the parameter, so a flow input written through an alias of the
+  type the method declares was refused with `SDL-E501`. The policy of section
+  4.3 compared the *names* of the written expressions, so a parameter that only
+  changed to an alias of its own type was refused as a breaking change with
+  `SDL-E602`. Both apply the assignability rules of section 6.7 after alias
+  expansion now.
 
 ### Hardened
 

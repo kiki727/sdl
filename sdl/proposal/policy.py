@@ -120,6 +120,8 @@ def _signature_breaks(
     before_output: str | None,
     after_inputs: dict[str, str],
     after_output: str | None,
+    aliases_before: dict[str, str] | None = None,
+    aliases_after: dict[str, str] | None = None,
 ) -> bool:
     """Whether a change of a signature breaks the contract of section 5.2.
 
@@ -137,6 +139,10 @@ def _signature_breaks(
     A change that only widens the accepted inputs, only narrows the output, or
     only adds optional parameters is compatible, so it is not breaking and the
     policy of section 4.3 does not require a version increment for it.
+
+    The alias maps, when they are given, are applied to the expressions before
+    the rule: an alias is transparent (section 9.3.2), so a parameter that
+    only writes its type through an alias accepts the same values.
     """
     # A parameter the client supplied is gone.
     for name in before_inputs:
@@ -148,21 +154,21 @@ def _signature_breaks(
         new = after_inputs.get(name)
         if new is None:
             continue
-        if not assignable_expressions(old, new):
+        if not assignable_expressions(old, new, aliases_before, aliases_after):
             return True
 
     # A parameter the client cannot omit.
     for name, new in after_inputs.items():
         if name in before_inputs:
             continue
-        if not is_optional_expression(new):
+        if not is_optional_expression(new, aliases_after):
             return True
 
     # The output the client expected is no longer produced.
     if before_output is not None:
         if after_output is None:
             return True
-        if not assignable_expressions(after_output, before_output):
+        if not assignable_expressions(after_output, before_output, aliases_after, aliases_before):
             return True
 
     return False
@@ -202,6 +208,32 @@ def _collect_versions(documents: DocumentSet) -> dict[str, str]:
         if isinstance(identifier, str) and isinstance(root.get("version"), str):
             versions[identifier] = root["version"]
     return versions
+
+
+def _collect_aliases(documents: DocumentSet) -> dict[str, str]:
+    """The aliases of the specification, by name.
+
+    An alias is a type declaration whose definition is a ``type`` expression
+    (section 9.3.2). The target is kept as the document writes it, so the
+    expansion happens where the rule is applied.
+    """
+    aliases: dict[str, str] = {}
+    for document in documents.documents.values():
+        root = _root(document)
+        if not isinstance(root, dict):
+            continue
+        if document.kind == "types":
+            for name, declaration in root.items():
+                if isinstance(declaration, dict) and isinstance(declaration.get("type"), str):
+                    aliases[str(name)] = declaration["type"]
+        for declaration in root.get("types") or []:
+            if not isinstance(declaration, dict):
+                continue
+            identifier = declaration.get("id")
+            target = declaration.get("type")
+            if isinstance(identifier, str) and isinstance(target, str):
+                aliases[identifier] = target
+    return aliases
 
 
 def _collect_types(documents: DocumentSet) -> dict[str, tuple]:
@@ -345,6 +377,8 @@ class PolicyChecker:
         violations: list[PolicyViolation] = []
         before = _collect_signatures(original)
         after = _collect_signatures(patched)
+        aliases_before = _collect_aliases(original)
+        aliases_after = _collect_aliases(patched)
         versions_before = _collect_versions(original)
         versions_after = _collect_versions(patched)
 
@@ -353,7 +387,9 @@ class PolicyChecker:
                 continue
             if after[key] == signature:
                 continue
-            if not _signature_breaks(*signature, *after[key]):
+            if not _signature_breaks(
+                *signature, *after[key], aliases_before, aliases_after
+            ):
                 # The change is compatible with the old signature, so it does
                 # not break the contract and the policy does not apply.
                 continue

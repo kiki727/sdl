@@ -126,8 +126,10 @@ class TypeMismatchValidator:
         
         for param in method.parameters:
             param_name = param.name
-            expected_type_id = param.type_id
-            
+            expected = param.type_ref
+            if expected is None and param.type_id is not None:
+                expected = TypeRef(kind="named", base=param.type_id)
+
             if param_name not in provided_mapping:
                 if not param.optional:
                     report.add_error(ValidationError(
@@ -138,11 +140,11 @@ class TypeMismatchValidator:
                         message=f"Parameter '{param_name}' is required by method but missing in flow mapping"
                     ))
                 continue
-            
+
             state_path = provided_mapping[param_name]
-            actual_type_id = self._resolve_state_type(flow, state_path)
-            
-            if actual_type_id is None:
+            actual = self._resolve_state_reference(flow, state_path)
+
+            if actual is None:
                 report.add_error(ValidationError(
                     code="SDL-E501",
                     severity=Severity.ERROR,
@@ -151,52 +153,57 @@ class TypeMismatchValidator:
                     message=f"Could not resolve type for state variable '{state_path}' in flow {flow.name}"
                 ))
                 continue
-                
-            # STRICT MODE: Exact match of Type IDs
-            if actual_type_id != expected_type_id:
-                actual_sym = self.graph.get_symbol(actual_type_id)
-                expected_sym = self.graph.get_symbol(expected_type_id)
-                
-                actual_name = actual_sym.name if actual_sym else actual_type_id
-                expected_name = expected_sym.name if expected_sym else expected_type_id
-                
+
+            if expected is None:
+                continue
+
+            # The data in the Flow State must be assignable to the type the
+            # method declares (section 2.3.3), which is the rule of section
+            # 6.7. An alias is transparent, and a union or an optional is not
+            # the same identifier as its member, so comparing the identifiers
+            # alone is not enough.
+            if not self.environment.assignable(actual, expected):
                 report.add_error(ValidationError(
                     code="SDL-E501",
                     severity=Severity.ERROR,
                     source=step.id,
                     target=method.id,
-                    message=f"Type mismatch for parameter '{param_name}': Expected {expected_name}, received {actual_name}"
+                    message=f"Type mismatch for parameter '{param_name}': Expected "
+                            f"{self._describe(expected)}, received {self._describe(actual)}"
                 ))
 
-    def _resolve_state_type(self, flow: FlowSymbol, state_path: str) -> Optional[str]:
-        """
-        Resolves the type of a variable in the flow state.
-        """
-        # Basic support for a single level of state lookup
-        # (e.g., 'amount' or 'status.is_valid')
+    def _resolve_state_reference(self, flow: FlowSymbol, state_path: str) -> Optional[TypeRef]:
+        """The type of a state path, in the terms of the specification.
 
+        The reference keeps the shape of the type — the arguments of a
+        generic and the members of a union — which a bare identifier loses.
+        It is what the assignability rules of section 6.7 need.
+        """
         parts = state_path.split('.')
         base_var = parts[0]
 
         if base_var not in flow.state_definitions:
             return None
 
-        var_def = flow.state_definitions[base_var]
+        variable = flow.state_definitions[base_var]
 
-        # If it's a complex type (Compound), we'd normally check the field in the TypeSymbol.
-        # For simplicity in this prototype, if the path is just 'base_var', return its type.
-        if len(parts) == 1:
-            return var_def.type_id
+        references = flow.metadata.get("state_type_refs") or {}
+        reference = references.get(base_var)
+        if reference is None:
+            reference = TypeRef(kind="named", base=variable.type_id)
 
-        # If path is 'status.is_valid', we look at the TypeSymbol of 'status'
-        type_sym = self.graph.get_symbol(var_def.type_id)
-        if isinstance(type_sym, TypeSymbol) and type_sym.type_kind == TypeKind.COMPOUND:
-            # Check fields
-            for field in type_sym.fields:
-                if field.name == parts[1]:
-                    return field.type_id
+        for part in parts[1:]:
+            symbol = self.graph.get_symbol(reference.base)
+            if not isinstance(symbol, TypeSymbol) or symbol.type_kind != TypeKind.COMPOUND:
+                # The specification does not describe the shape of the value,
+                # so the rest of the path cannot be resolved.
+                return None
+            field_reference = (symbol.metadata.get("field_type_refs") or {}).get(part)
+            if field_reference is None:
+                return None
+            reference = field_reference
 
-        return None
+        return reference
 
     # -- the outputs of a flow ------------------------------------------------
 

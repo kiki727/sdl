@@ -243,6 +243,37 @@ def test_a_written_optional_is_recognised() -> None:
     assert not is_optional_expression("String<")
 
 
+def test_a_written_alias_is_expanded() -> None:
+    """An alias is transparent (section 9.3.2), on the written expressions too."""
+    # A parameter written through an alias of its own type is the same type,
+    # so the change is not breaking.
+    assert assignable_expressions("String", "Nickname", None, {"Nickname": "String"})
+    assert assignable_expressions("Nickname", "String", {"Nickname": "String"}, None)
+    # An alias of another type is a change of type, and it is breaking.
+    assert not assignable_expressions("String", "Count", None, {"Count": "Int"})
+    # An alias chains to its base.
+    assert assignable_expressions(
+        "String", "Nickname", None, {"Nickname": "Name", "Name": "String"}
+    )
+    # An alias nested in a generic is expanded as well.
+    assert assignable_expressions(
+        "List<String>", "List<Nickname>", None, {"Nickname": "String"}
+    )
+
+
+def test_a_written_alias_of_an_optional_is_recognised() -> None:
+    """An alias of an ``Optional<T>`` can be omitted by the caller."""
+    assert is_optional_expression("Maybe", {"Maybe": "Optional<String>"})
+    assert not is_optional_expression("Maybe", {"Maybe": "String"})
+
+
+def test_a_written_alias_cycle_terminates() -> None:
+    """A cycle between aliases is left as it is, so the expansion ends."""
+    aliases = {"A": "B", "B": "A"}
+    assert assignable_expressions("A", "A", aliases, aliases)
+    assert not assignable_expressions("A", "String", aliases, None)
+
+
 CHECKS = [
     test_a_type_is_assignable_to_itself,
     test_a_type_is_not_assignable_to_another_one,
@@ -261,6 +292,9 @@ CHECKS = [
     test_a_written_generic_is_invariant_unless_it_is_a_result,
     test_a_written_expression_that_cannot_be_read_is_not_assignable,
     test_a_written_optional_is_recognised,
+    test_a_written_alias_is_expanded,
+    test_a_written_alias_of_an_optional_is_recognised,
+    test_a_written_alias_cycle_terminates,
 ]
 
 

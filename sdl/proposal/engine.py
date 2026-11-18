@@ -43,6 +43,7 @@ from sdl.proposal.document_patcher import (
 from sdl.proposal.models import Patch, Proposal
 from sdl.proposal.policy import PolicyChecker, PolicyViolation
 from sdl.proposal.policy import (
+    _collect_aliases,
     _collect_contracts,
     _collect_ids,
     _collect_signatures,
@@ -447,6 +448,8 @@ def _breaks_a_contract(original: DocumentSet, shadow: DocumentSet) -> bool:
     """
     before_signatures = _collect_signatures(original)
     after_signatures = _collect_signatures(shadow)
+    aliases_before = _collect_aliases(original)
+    aliases_after = _collect_aliases(shadow)
 
     # A method that is gone.
     if set(before_signatures) - set(after_signatures):
@@ -455,9 +458,13 @@ def _breaks_a_contract(original: DocumentSet, shadow: DocumentSet) -> bool:
     # A method whose signature changed in a way that breaks the contract. A
     # compatible change (an added optional parameter, a widened input, a
     # narrowed output) does not break a contract and is not a MAJOR change.
+    # An alias is transparent (section 9.3.2), so the expressions are expanded
+    # before the rule, and the policy and the version of the merge agree.
     for key, signature in before_signatures.items():
         other = after_signatures.get(key)
-        if other is not None and other != signature and _signature_breaks(*signature, *other):
+        if other is not None and other != signature and _signature_breaks(
+            *signature, *other, aliases_before, aliases_after
+        ):
             return True
 
     # An interface or a type that is gone.

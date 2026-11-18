@@ -620,6 +620,42 @@ RECIPES: list[Recipe] = [
         version="1.1.0",
     ),
     Recipe(
+        name="add an alias and use it as a flow input in the same proposal",
+        rule="§9.3.2 an alias is transparent",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Nickname",
+                action=ADD,
+                value={"id": "Nickname", "version": "1.0.0", "type": "String"},
+            ),
+            Patch(
+                target="flow.sdl.yaml:inputs",
+                action=REPLACE,
+                value={"name": "Nickname"},
+            ),
+        ],
+        expect="accepted",
+        version="1.1.0",
+    ),
+    Recipe(
+        name="change a parameter to an alias of the same type",
+        rule="§9.3.2 an alias is transparent to the policy of section 4.3",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Nickname",
+                action=ADD,
+                value={"id": "Nickname", "version": "1.0.0", "type": "String"},
+            ),
+            Patch(
+                target="interfaces.sdl.yaml:methods[greet].inputs",
+                action=REPLACE,
+                value={"name": "Nickname"},
+            ),
+        ],
+        expect="accepted",
+        version="1.1.0",
+    ),
+    Recipe(
         name="a proposal without an approval changes nothing",
         rule="§8.5 the approval of an administrator is required",
         patches=[
@@ -1093,5 +1129,24 @@ RECIPES: list[Recipe] = [
         expect="rejected",
         phase="semantic",
         code="SDL-E603",
+    ),
+    Recipe(
+        name="change a parameter to an alias of another type",
+        rule="§4.3 a change of type still needs a version increment",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Count",
+                action=ADD,
+                value={"id": "Count", "version": "1.0.0", "type": "Int"},
+            ),
+            Patch(
+                target="interfaces.sdl.yaml:methods[greet].inputs",
+                action=REPLACE,
+                value={"name": "Count"},
+            ),
+        ],
+        expect="rejected",
+        phase="policy",
+        code="SDL-E602",
     ),
 ]
