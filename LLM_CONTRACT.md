@@ -123,8 +123,10 @@ must not assume they are enforced until the corresponding status row in
   `SDL-E701`, in the referential phase.
 * Two patches that target the same element are rejected with `SDL-E704`,
   whatever form the two targets are written in.
-* Every new name a patch introduces must exist in the specification or be
-  introduced by the same proposal, otherwise `SDL-E702`.
+* Every reference a patch writes, and every name it introduces, must exist in
+  the specification or be introduced by the same proposal, otherwise
+  `SDL-E702`, in the referential phase. The reference may be nested in the
+  value: a method input, a field type, an `outputs.type`.
 * The identifiers of existing components may not change, and a signature may
   not change without a version increment. A signature change needs the MAJOR
   version of the interface. All of them are `SDL-E602`.

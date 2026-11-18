@@ -22,6 +22,16 @@ from sdl.proposal.paths import (
 from sdl.types import expressions as sdl_types
 
 
+#: The keys whose value names an element of the specification: a reference
+#: that has to resolve, not a declaration.
+_NAME_KEYS = frozenset({"interface", "implementation"})
+
+#: The keys whose value is a type expression, or a mapping of them.
+_TYPE_KEYS = frozenset(
+    {"type", "output", "outputs", "input", "inputs", "fields", "properties"}
+)
+
+
 @dataclass
 class ReferenceViolation:
     """A reference in a proposal that does not resolve."""
@@ -55,7 +65,14 @@ def known_names(documents: DocumentSet) -> set[str]:
 
 
 def introduced_names(proposal: Proposal) -> set[str]:
-    """The names a proposal introduces itself."""
+    """The names a proposal introduces itself.
+
+    A name is introduced when a patch *declares* it: the value of an ``add``
+    carries the ``id`` of the element. The ``interface`` and the
+    ``implementation`` of a binding are *references*, not declarations, so
+    they are not introduced here. A proposal that binds an interface it does
+    not declare is a broken reference of phase two, not a new name.
+    """
     names: set[str] = set()
     for patch in proposal.patches:
         if patch.action != PatchAction.ADD:
@@ -65,12 +82,6 @@ def introduced_names(proposal: Proposal) -> set[str]:
             identifier = value.get("id")
             if isinstance(identifier, str):
                 names.add(identifier)
-            interface = value.get("interface")
-            if isinstance(interface, str):
-                names.add(interface)
-            implementation = value.get("implementation")
-            if isinstance(implementation, str):
-                names.add(implementation)
     return names
 
 
@@ -134,7 +145,7 @@ def check(proposal: Proposal, documents: DocumentSet) -> list[ReferenceViolation
 
     for patch in proposal.patches:
         try:
-            parse_target(patch.target)
+            target = parse_target(patch.target)
         except Exception as error:  # noqa: BLE001 - reported as a violation
             violations.append(
                 ReferenceViolation(code="SDL-E701", message=str(error))
@@ -152,24 +163,12 @@ def check(proposal: Proposal, documents: DocumentSet) -> list[ReferenceViolation
         if value is None:
             continue
 
-        if isinstance(value, dict):
-            for key in ("interface", "implementation"):
-                name = value.get(key)
-                if isinstance(name, str) and name not in known and name not in introduced:
-                    violations.append(
-                        ReferenceViolation(
-                            code="SDL-E702",
-                            message=(
-                                f"The patch of {patch.target!r} refers to {name!r}, "
-                                f"which does not exist in the specification and is not "
-                                f"introduced by this proposal."
-                            ),
-                        )
-                    )
+        # A whole element that replaces an existing one names the element it
+        # replaces, so the identifier it carries has to exist already.
+        if patch.action == PatchAction.REPLACE and isinstance(value, dict):
             identifier = value.get("id")
             if (
                 isinstance(identifier, str)
-                and patch.action == PatchAction.REPLACE
                 and identifier not in known
                 and identifier not in introduced
             ):
@@ -182,19 +181,99 @@ def check(proposal: Proposal, documents: DocumentSet) -> list[ReferenceViolation
                         ),
                     )
                 )
-            expression = value.get("type")
-            if isinstance(expression, str):
-                violations.extend(
-                    _check_type_expression(expression, known, introduced, patch)
-                )
-            for key in ("output", "outputs"):
-                declared = value.get(key)
-                if isinstance(declared, str):
-                    violations.extend(
-                        _check_type_expression(declared, known, introduced, patch)
-                    )
+
+        # Every reference inside the value, however deeply it is nested. The
+        # last segment of the target says what the value as a whole is: a name
+        # (``bindings[Greeter].implementation``), a type or a mapping of types
+        # (``methods[greet].outputs``, ``Greeting.fields``), or a structure to
+        # look inside.
+        last = target.segments[-1].value if target.segments else ""
+        if last in _NAME_KEYS and isinstance(value, str):
+            violations.extend(_check_name(value, known, introduced, patch))
+        elif last in _TYPE_KEYS:
+            violations.extend(_check_types(value, known, introduced, patch))
+        else:
+            violations.extend(_check_value(value, known, introduced, patch))
 
     return violations
+
+
+def _check_value(
+    value: object,
+    known: set[str],
+    introduced: set[str],
+    patch: Patch,
+) -> list[ReferenceViolation]:
+    """Every reference inside the value of a patch.
+
+    A value is a structure the patch writes into the specification. The keys
+    it uses say what the strings under them mean: an ``interface`` or an
+    ``implementation`` names an element, an ``inputs`` or a ``fields`` maps a
+    name to a type, and anything else is a structure to look inside.
+    """
+    violations: list[ReferenceViolation] = []
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key in _NAME_KEYS and isinstance(item, str):
+                violations.extend(_check_name(item, known, introduced, patch))
+            elif key in _TYPE_KEYS:
+                violations.extend(_check_types(item, known, introduced, patch))
+            else:
+                violations.extend(_check_value(item, known, introduced, patch))
+    elif isinstance(value, list):
+        for item in value:
+            violations.extend(_check_value(item, known, introduced, patch))
+    return violations
+
+
+def _check_types(
+    item: object,
+    known: set[str],
+    introduced: set[str],
+    patch: Patch,
+) -> list[ReferenceViolation]:
+    """A value that holds a type expression, or a mapping of them.
+
+    An ``output`` object and an inference object carry the type under the
+    ``type`` key; any other mapping maps a name to a type.
+    """
+    violations: list[ReferenceViolation] = []
+    if isinstance(item, str):
+        violations.extend(_check_type_expression(item, known, introduced, patch))
+    elif isinstance(item, dict):
+        declared = item.get("type")
+        if isinstance(declared, str) and (len(item) == 1 or "origin" in item):
+            violations.extend(
+                _check_type_expression(declared, known, introduced, patch)
+            )
+        else:
+            for nested in item.values():
+                violations.extend(_check_types(nested, known, introduced, patch))
+    elif isinstance(item, list):
+        for nested in item:
+            violations.extend(_check_types(nested, known, introduced, patch))
+    return violations
+
+
+def _check_name(
+    name: str,
+    known: set[str],
+    introduced: set[str],
+    patch: Patch,
+) -> list[ReferenceViolation]:
+    """A name a patch writes that has to name an element of the specification."""
+    if name in known or name in introduced:
+        return []
+    return [
+        ReferenceViolation(
+            code="SDL-E702",
+            message=(
+                f"The patch of {patch.target!r} refers to {name!r}, which does "
+                f"not exist in the specification and is not introduced by this "
+                f"proposal."
+            ),
+        )
+    ]
 
 
 def _check_type_expression(

@@ -53,7 +53,7 @@ Required result: **all eleven groups pass**.
 * SDL runtime: 10/10
 * Assignability: 17/17
 * Compatibility: 15/15
-* Proposal recipes: 30/30
+* Proposal recipes: 38/38
 * Every example document validates
 * The test suite changes nothing in the repository
 

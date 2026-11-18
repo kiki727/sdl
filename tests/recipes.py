@@ -585,6 +585,24 @@ RECIPES: list[Recipe] = [
         version="1.0.1",
     ),
     Recipe(
+        name="add an alias and use it as a field type in the same proposal",
+        rule="§8.4 phase two a name defined within the proposal exists",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Nickname",
+                action=ADD,
+                value={"id": "Nickname", "version": "1.0.0", "type": "String"},
+            ),
+            Patch(
+                target="types.sdl.yaml:Greeting.fields",
+                action=REPLACE,
+                value={"message": "Nickname"},
+            ),
+        ],
+        expect="accepted",
+        version="1.1.0",
+    ),
+    Recipe(
         name="a proposal without an approval changes nothing",
         rule="§8.5 the approval of an administrator is required",
         patches=[
@@ -908,5 +926,122 @@ RECIPES: list[Recipe] = [
         expect="rejected",
         phase="referential",
         code="SDL-E703",
+    ),
+    Recipe(
+        name="bind an interface the proposal does not declare",
+        rule="§8.4 phase two a reference in a value field must exist",
+        patches=[
+            Patch(
+                target="project.bindings",
+                action=ADD,
+                value={
+                    "interface": "Nonexistent",
+                    "version": "1.0.0",
+                    "implementation": "greeter_impl",
+                },
+            )
+        ],
+        expect="rejected",
+        phase="referential",
+        code="SDL-E702",
+    ),
+    Recipe(
+        name="bind an implementation the proposal does not declare",
+        rule="§8.4 phase two a reference in a value field must exist",
+        patches=[
+            Patch(
+                target="project.bindings",
+                action=ADD,
+                value={
+                    "interface": "Farewell",
+                    "version": "1.0.0",
+                    "implementation": "nowhere",
+                },
+            )
+        ],
+        setup=setup_with_second_interface,
+        expect="rejected",
+        phase="referential",
+        code="SDL-E702",
+    ),
+    Recipe(
+        name="point a binding at an implementation that does not exist",
+        rule="§8.4 phase two a reference in a value field must exist",
+        patches=[
+            Patch(
+                target="project.bindings[Greeter].implementation",
+                action=REPLACE,
+                value="nowhere",
+            )
+        ],
+        expect="rejected",
+        phase="referential",
+        code="SDL-E702",
+    ),
+    Recipe(
+        name="add a method with an input type that does not exist",
+        rule="§8.4 phase two a reference in a value field must exist",
+        patches=[
+            Patch(
+                target="interfaces.sdl.yaml:methods",
+                action=ADD,
+                value={
+                    "id": "farewell",
+                    "version": "1.0.0",
+                    "inputs": {"name": "Nonexistent"},
+                    "outputs": {"type": "String"},
+                },
+            )
+        ],
+        expect="rejected",
+        phase="referential",
+        code="SDL-E702",
+    ),
+    Recipe(
+        name="add a method whose output type does not exist",
+        rule="§8.4 phase two a reference in a value field must exist",
+        patches=[
+            Patch(
+                target="interfaces.sdl.yaml:methods",
+                action=ADD,
+                value={
+                    "id": "farewell",
+                    "version": "1.0.0",
+                    "inputs": {"name": "String"},
+                    "outputs": {"type": "Nonexistent"},
+                },
+            )
+        ],
+        expect="rejected",
+        phase="referential",
+        code="SDL-E702",
+    ),
+    Recipe(
+        name="add a field whose type does not exist",
+        rule="§8.4 phase two a reference in a value field must exist",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Greeting.fields",
+                action=ADD,
+                value={"language": "Nonexistent"},
+            )
+        ],
+        expect="rejected",
+        phase="referential",
+        code="SDL-E702",
+    ),
+    Recipe(
+        name="change the output type of a method to a type that does not exist",
+        rule="§8.4 phase two a reference in a value field must exist",
+        patches=[
+            Patch(
+                target="interfaces.sdl.yaml:methods[greet].outputs.type",
+                action=REPLACE,
+                value="Nonexistent",
+            )
+        ],
+        expect="rejected",
+        phase="referential",
+        code="SDL-E702",
     ),
 ]

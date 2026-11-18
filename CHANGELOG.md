@@ -60,7 +60,14 @@ version in `VERSION` is the current core version of the working tree.
 * Recipes: adding an optional parameter, a type change with a migration plan,
   and a type change without one, with too narrow a plan, and with a document
   that does not exist; and pointing a `nodejs` back end at a TypeScript
-  implementation (`tests/recipes.py`, now 30 recipes).
+  implementation (`tests/recipes.py`).
+* Recipes for the referential phase of section 8.4: an `add` that binds an
+  interface or an implementation the proposal does not declare, a `replace`
+  that points a binding at an implementation that does not exist, and an `add`
+  whose type expressions do not resolve — a method input, a method output, a
+  field, and the output of an existing method. One accepted recipe proves the
+  other half of the rule: a name the proposal declares itself may be referenced
+  in the same proposal (`tests/recipes.py`, now 38 recipes).
 * `tests/test_assignability.py` — the expression-level rules.
 
 ### Fixed
@@ -94,6 +101,15 @@ version in `VERSION` is the current core version of the working tree.
   The plan of section 4.3.1 is defined and enforced, so the limitation was
   stale; the contract now states the rule among the ones the engine already
   enforces.
+* The referential phase of section 8.4 now checks every reference a patch
+  writes, not only the ones at the top of its value. Two things were wrong in
+  `sdl/proposal/references.py`. The `interface` and the `implementation` of a
+  binding were counted as names the proposal *introduces*, so a proposal that
+  bound an interface it does not declare passed phase two and was caught only
+  by the simulation. And a reference nested in a value — a method input, a
+  field type, an `outputs.type` — was not looked at, so the simulation caught
+  it instead. Both are `SDL-E702` in the referential phase, which is where the
+  specification puts them.
 
 ### Removed from the known gaps
 
@@ -438,6 +454,12 @@ covered by a recipe or a regression test now.
 * **A target that resolves to nothing was a policy failure.** Section 8.4
   orders the phases, and the referential validation comes before the policy
   check. The phase of the failure was wrong.
+* **The referential phase could not see the references it was written to
+  check.** A binding counts its `interface` and its `implementation` among the
+  names it *introduces*, so a proposal that bound an interface it does not
+  declare slipped past phase two. A reference nested in a value — a method
+  input, a field type, an `outputs.type` — was never looked at at all. Both
+  are `SDL-E702` in the referential phase now.
 
 ### Hardened
 

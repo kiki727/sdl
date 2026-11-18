@@ -342,8 +342,10 @@ error ir SDL-E603 The step 'greet' calls the interface 'Greeter', but the
 
 1. **syntactic** — the proposal document is validated against the schema of
    Core 1.0.
-2. **referential** — every name the proposal introduces must exist in the
-   specification, or be introduced by the same proposal.
+2. **referential** — every reference a patch writes, and every name it
+   introduces, must exist in the specification, or be introduced by the same
+   proposal. The reference may be nested in the value: a method input, a field
+   type, an `outputs.type`.
 3. **policy** — the prohibitions of the project are checked: the identifiers of
    the components may not change, and a signature may not change without a
    version increment.
