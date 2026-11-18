@@ -79,14 +79,17 @@ version in `VERSION` is the current core version of the working tree.
   generic and a generic flow input in both back ends. The pipeline integration
   test gained a check that the resolver is repeatable
   (`tests/test_integration.py`).
-* A merged document keeps its comments. The data of a document carries no
-  comments — the YAML parser drops them — so a document that a proposal
-  changed used to be written back without them. The comments are now read out
-  of the original text and put back beside the nodes they annotate
-  (`sdl/yaml/comments.py`, called from `SourceDocument.render`). A comment
-  whose node the proposal removed is dropped; a comment on a list element
-  follows the element by its `id` rather than by its position. The layout is
-  still normalised, because the document is re-serialised from the data.
+* A merged document keeps its comments and its blank lines. The data of a
+  document carries neither — the YAML parser drops them — so a document that a
+  proposal changed used to be written back without them. They are now read out
+  of the original text and put back around the nodes they belong to
+  (`sdl/yaml/layout.py`, called from `SourceDocument.render`). A comment or a
+  blank line whose node the proposal removed is dropped; a comment on a list
+  element follows the element by its `id` rather than by its position, so
+  removing a neighbour does not move it. A `#` inside a multi-line scalar is
+  not a comment. The indentation and the quoting are still normalised, because
+  the document is re-serialised from the data, and re-attaching the layout is
+  idempotent, so repeated merges do not accumulate blank lines.
 * `LLM_CONTRACT.md` no longer lists the form of a migration plan as undefined.
   The plan of section 4.3.1 is defined and enforced, so the limitation was
   stale; the contract now states the rule among the ones the engine already
@@ -101,8 +104,9 @@ version in `VERSION` is the current core version of the working tree.
   does not break the contract;
 * a union or a nested generic keeps its members in the generated source, in
   both back ends;
-* a merged document keeps the comments of the original, so a change to a type
-  no longer erases the notes a human wrote around it.
+* a merged document keeps the comments and the blank lines of the original, so
+  a change to a type no longer erases the notes and the grouping a human wrote
+  around it.
 
 ---
 

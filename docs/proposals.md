@@ -358,8 +358,9 @@ error ir SDL-E603 The step 'greet' calls the interface 'Greeter', but the
    added or removed or a component version changes, PATCH otherwise. A
    contract breaks when a signature changes, when a method disappears from an
    interface, or when an interface or a type disappears. A rewritten document
-   is re-serialised from its data, so its layout is normalised, but its
-   **comments are kept**, beside the nodes they annotate.
+   is re-serialised from its data, so its indentation and its quoting are
+   normalised, but its **comments** and its **blank lines** are kept, around
+   the nodes they belong to.
 
 A breaking change also needs the **interface** itself to be incremented by a
 major step (section 5.4). A patch version is not enough:

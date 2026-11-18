@@ -48,7 +48,7 @@ Required result: **all eleven groups pass**.
 * Core 1.0 conformance: 31/31
 * Proposal protocol self-check: 18/18
 * Package structure: 6/6
-* Pipeline integration: 22/22
+* Pipeline integration: 24/24
 * Code generation: 28/28
 * SDL runtime: 10/10
 * Assignability: 17/17
@@ -104,12 +104,12 @@ What is left is not a layer but a breadth:
   and the rule of section 7.2 is only checked for the back ends the toolchain
   implements, because only those know which languages they can host.
 * **the normalisation of a merged document.** A merged document is
-  re-serialised from its data, so its *layout* is normalised — the blank
-  lines, the quoting and the indentation are the toolchain's, not the
-  author's. The *comments* are preserved: they are read out of the original
-  text and put back beside the nodes they annotate (`sdl/yaml/comments.py`).
-  A comment on a node the proposal removed is dropped, because there is no
-  longer a node to annotate.
+  re-serialised from its data, so its *indentation*, its *quoting* and its
+  line breaks are the toolchain's, not the author's. The *comments* and the
+  *blank lines* are preserved: they are read out of the original text and put
+  back around the nodes they belong to (`sdl/yaml/layout.py`). A comment or a
+  blank line that belonged to a node the proposal removed is dropped, because
+  there is no longer a node to hold it.
 
 ### The back ends
 
@@ -209,5 +209,6 @@ to start there.
   document. Without it, a valid proposal changes nothing.
 * The merge writes the changed documents back and increments the project
   version according to semver. A merged document is re-serialised from its
-  data, so its layout is normalised; its comments are put back beside the
-  nodes they annotate (`sdl/yaml/comments.py`).
+  data, so its indentation and its quoting are normalised; its comments and
+  its blank lines are put back around the nodes they belong to
+  (`sdl/yaml/layout.py`).

@@ -436,7 +436,7 @@ def test_a_failed_merge_rolls_back_every_document() -> None:
 
 
 # ---------------------------------------------------------------------------
-# The comments survive a merge
+# The comments and the layout survive a merge
 # ---------------------------------------------------------------------------
 
 
@@ -445,8 +445,8 @@ def test_the_comments_of_a_merged_document_are_kept() -> None:
 
     The data of a document carries no comments, so a merged document used to
     lose every comment a human had written. The comments are now read out of
-    the original text and put back beside the nodes they annotate
-    (``sdl/yaml/comments.py``).
+    the original text and put back around the nodes they annotate
+    (``sdl/yaml/layout.py``).
     """
     from sdl.proposal.engine import ProposalEngine
 
@@ -480,7 +480,7 @@ def test_a_comment_is_attached_to_the_node_it_annotates() -> None:
     A ``#`` inside a quoted scalar or a literal block scalar is not a comment
     and must be left alone.
     """
-    from sdl.yaml.comments import restore_comments
+    from sdl.yaml.layout import restore_layout
 
     original = (
         "sdl: \"1.0\"\n"
@@ -511,7 +511,7 @@ def test_a_comment_is_attached_to_the_node_it_annotates() -> None:
         },
     }
 
-    restored = restore_comments(original, _render(data))
+    restored = restore_layout(original, _render(data))
 
     assert "# The fields of the greeting." in restored, restored
     assert "# the greeting itself" in restored, restored
@@ -528,7 +528,7 @@ def test_a_comment_follows_an_item_by_its_id() -> None:
     stays with the component it annotates when another component is removed,
     and the comment of the removed component is dropped.
     """
-    from sdl.yaml.comments import restore_comments
+    from sdl.yaml.layout import restore_layout
 
     original = (
         "sdl: \"1.0\"\n"
@@ -557,7 +557,7 @@ def test_a_comment_follows_an_item_by_its_id() -> None:
         },
     }
 
-    restored = restore_comments(original, _render(data))
+    restored = restore_layout(original, _render(data))
     lines = restored.splitlines()
     charge = next(line for line in lines if "charge" in line)
 
@@ -566,8 +566,93 @@ def test_a_comment_follows_an_item_by_its_id() -> None:
     assert "#" not in next(line for line in lines if "Notifier::send" in line), restored
 
 
+def test_the_blank_lines_of_a_document_are_kept() -> None:
+    """A blank line that groups a document is not lost when it is rewritten.
+
+    The data of a document carries no blank lines either, so the blank lines
+    are read out of the original text and put back before the node they
+    precede. A blank line that belonged to a node the change removed is
+    dropped with it.
+    """
+    from sdl.yaml.layout import restore_layout
+
+    original = (
+        "sdl: \"1.0\"\n"
+        "kind: flow\n"
+        "\n"
+        "flow:\n"
+        "  id: demo\n"
+        "\n"
+        "  inputs:\n"
+        "    name: String\n"
+        "\n"
+        "  outputs:\n"
+        "    message: String\n"
+    )
+
+    # The proposal adds an input; the blank lines that group the flow stay.
+    data = {
+        "sdl": "1.0",
+        "kind": "flow",
+        "flow": {
+            "id": "demo",
+            "inputs": {"name": "String", "greeting": "String"},
+            "outputs": {"message": "String"},
+        },
+    }
+
+    restored = restore_layout(original, _render(data))
+
+    assert "\n\nflow:\n" in restored, restored
+    assert "\n\n  inputs:\n" in restored, restored
+    assert "\n\n  outputs:\n" in restored, restored
+
+
+def test_restoring_the_layout_twice_changes_nothing() -> None:
+    """A second rewrite of an unchanged document is a no-op.
+
+    A project goes through many proposals, and every one of them rewrites the
+    document it changed. If re-attaching the layout were not stable, the blank
+    lines and the comments would pile up with every merge. Restoring the layout
+    of an already restored document must reproduce it byte for byte.
+    """
+    from sdl.yaml.layout import restore_layout
+
+    original = (
+        "sdl: \"1.0\"\n"
+        "kind: flow\n"
+        "\n"
+        "flow:\n"
+        "  id: demo\n"
+        "\n"
+        "  note: |\n"
+        "    # not a comment\n"
+        "    second line\n"
+        "\n"
+        "  steps:\n"
+        "    # the only step\n"
+        "    - id: a\n"
+        "      call: X::y  # the call\n"
+    )
+
+    data = {
+        "sdl": "1.0",
+        "kind": "flow",
+        "flow": {
+            "id": "demo",
+            "note": "# not a comment\nsecond line\n",
+            "steps": [{"id": "a", "call": "X::y"}],
+        },
+    }
+
+    once = restore_layout(original, _render(data))
+    twice = restore_layout(once, _render(data))
+
+    assert once == twice, f"--- once ---\n{once}\n--- twice ---\n{twice}"
+
+
 def _render(data) -> str:
-    """Serialise document data the way the merge does, before comments."""
+    """Serialise document data the way the merge does, before the layout."""
     import yaml
 
     from sdl.documents import SDLDumper
@@ -604,6 +689,8 @@ CHECKS = [
     test_the_comments_of_a_merged_document_are_kept,
     test_a_comment_is_attached_to_the_node_it_annotates,
     test_a_comment_follows_an_item_by_its_id,
+    test_the_blank_lines_of_a_document_are_kept,
+    test_restoring_the_layout_twice_changes_nothing,
 ]
 
 
