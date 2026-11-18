@@ -67,7 +67,10 @@ version in `VERSION` is the current core version of the working tree.
   whose type expressions do not resolve — a method input, a method output, a
   field, and the output of an existing method. One accepted recipe proves the
   other half of the rule: a name the proposal declares itself may be referenced
-  in the same proposal (`tests/recipes.py`, now 38 recipes).
+  in the same proposal. Three more touch other domains of a project: an import
+  of a document that does not exist (`SDL-E302`), an enum type (accepted, a
+  MINOR change), and a second binding for an interface that already has one
+  (`SDL-E603`). `tests/recipes.py` is now 41 recipes.
 * `tests/test_assignability.py` — the expression-level rules.
 
 ### Fixed

@@ -603,6 +603,23 @@ RECIPES: list[Recipe] = [
         version="1.1.0",
     ),
     Recipe(
+        name="add an enum type",
+        rule="§8.3 add a new element to a collection",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Status",
+                action=ADD,
+                value={
+                    "id": "Status",
+                    "version": "1.0.0",
+                    "enum": ["active", "closed"],
+                },
+            )
+        ],
+        expect="accepted",
+        version="1.1.0",
+    ),
+    Recipe(
         name="a proposal without an approval changes nothing",
         rule="§8.5 the approval of an administrator is required",
         patches=[
@@ -1043,5 +1060,38 @@ RECIPES: list[Recipe] = [
         expect="rejected",
         phase="referential",
         code="SDL-E702",
+    ),
+    Recipe(
+        name="add an import of a document that does not exist",
+        rule="§4.1 an import must name a document of the project",
+        patches=[
+            Patch(
+                target="project.imports",
+                action=ADD,
+                value={"path": "nowhere.sdl.yaml"},
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E302",
+    ),
+    Recipe(
+        name="add a second binding for the same interface",
+        rule="§6.2 a binding is exclusive",
+        patches=[
+            Patch(
+                target="project.bindings",
+                action=ADD,
+                value={
+                    "interface": "Greeter",
+                    "version": "1.0.0",
+                    "implementation": "greeter_impl_v2",
+                },
+            )
+        ],
+        setup=setup_with_second_greeter,
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E603",
     ),
 ]

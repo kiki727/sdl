@@ -17,7 +17,7 @@ This runs, in order:
 7. the SDL runtime test — 10 checks
 8. the assignability test — 17 checks
 9. the compatibility test — 15 checks
-10. the proposal recipes — 38 checks
+10. the proposal recipes — 41 checks
 11. validation of every example document
 
 It exits non-zero if any of the groups fails.
