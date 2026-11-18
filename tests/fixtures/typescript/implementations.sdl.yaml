@@ -1,0 +1,14 @@
+sdl: "1.0"
+kind: implementation
+
+implementation:
+  id: local_priority_service
+  version: "1.0.0"
+  implements:
+    - interface: PriorityService
+      version: "1.0.0"
+
+  language: typescript
+  source:
+    file: src/services/priority.ts
+    symbol: LocalPriorityService

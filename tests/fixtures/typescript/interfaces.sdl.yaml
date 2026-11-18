@@ -1,0 +1,16 @@
+sdl: "1.0"
+kind: interface
+
+interface:
+  id: PriorityService
+  version: "1.0.0"
+  imports:
+    - path: "types.sdl.yaml"
+
+  methods:
+    - id: rank
+      version: "1.0.0"
+      inputs:
+        order: Order
+      outputs:
+        type: Priority

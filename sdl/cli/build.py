@@ -71,9 +71,10 @@ def build(
 
     generated: list[str] = []
     if not ir_only:
-        from sdl.backends.codegen.python_gen import PythonCodegen
+        from sdl.backends import codegen_for
 
-        files = PythonCodegen(result.graph).generate()
+        generator = codegen_for(_backend_target(result))(result.graph)
+        files = generator.generate()
         for relative, content in sorted(files.items()):
             path = target / relative
             path.parent.mkdir(parents=True, exist_ok=True)

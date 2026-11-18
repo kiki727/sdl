@@ -13,14 +13,19 @@ This runs, in order:
 3. the proposal protocol self-check — 18 checks
 4. the package structure check — 6 checks
 5. the pipeline integration test — 18 checks
-6. the Python back end test — 12 checks
+6. the code generation test — 24 checks
 7. the SDL runtime test — 10 checks
-8. the assignability test — 11 checks
+8. the assignability test — 17 checks
 9. the compatibility test — 15 checks
-10. the proposal recipes — 24 checks
+10. the proposal recipes — 30 checks
 11. validation of every example document
 
 It exits non-zero if any of the groups fails.
+
+The code generation test runs the generated TypeScript with Node, which strips
+the types. Those checks are skipped, with a printed note, when no Node with
+`--experimental-strip-types` (Node 22.6 and later) is on the `PATH`. Everything
+else needs only Python.
 
 It also verifies that the test suite changed nothing in the repository. The
 proposal protocol writes to the documents, so every test that merges a
@@ -103,7 +108,7 @@ repository.
 | `test_recipes.py` | The runner of the recipes. |
 | `test_package.py` | Structural invariants: the version, the layers, the packaged schemas, the diagnostic registry. |
 | `test_integration.py` | The end to end pipeline: documents in, canonical IR out. |
-| `test_codegen.py` | The Python back end: valid source, deterministic source, no raw text. |
+| `test_codegen.py` | The back ends: valid source, deterministic source, no raw text. |
 | `test_runtime.py` | The runtime: the order of the steps, the conditions, the error strategies, the mandatory outputs. |
 | `test_assignability.py` | The assignability rules of Core 0.2 section 6.7. |
 | `test_compatibility.py` | The compatibility rules of Core 1.0 section 5. |

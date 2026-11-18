@@ -1,0 +1,21 @@
+sdl: "1.0"
+kind: project
+
+project:
+  id: typescript_demo
+  version: "1.0.0"
+
+  imports:
+    - path: "types.sdl.yaml"
+    - path: "interfaces.sdl.yaml"
+    - path: "implementations.sdl.yaml"
+    - path: "flow.sdl.yaml"
+
+  bindings:
+    - interface: PriorityService
+      version: "1.0.0"
+      implementation: local_priority_service
+
+  backend:
+    target: nodejs
+    mode: codegen

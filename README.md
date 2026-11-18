@@ -32,7 +32,7 @@ readiness it does not have.
 | Determinism (layer 4) | **Done** | The same document always produces the same IR, byte for byte. |
 | Semantic Firewall (layer 5) | **Done** | The references are derived again after every patch, so a proposal that breaks one is rejected. |
 | Proposal protocol (layer 6) | **Done** | The four validation phases of section 8.4, the policy of section 4.3, the approval of section 8.5 and the merge. |
-| Code generation (layer 7) | **Done** | The Python back end: types, interfaces, flows, implementations, runtime. The output compiles and is deterministic. |
+| Code generation (layer 7) | **Done** | Two back ends: Python and NodeJS/TypeScript. Types, interfaces, flows, implementations, runtime. The output is valid in its language, deterministic, and free of raw document text. |
 | Runtime (layer 7) | **Done** | The `execute` mode: the runtime executes the flows of the canonical IR directly, with the dynamic binding of section 6.2. |
 | Compatibility engine | **Done** | Section 5: the assignability rules of 0.2 §6.7, the signature compatibility of §5.2, the completeness of §5.3 and the version compatibility of §5.4. Fail closed: a Python signature the validator cannot read is `SDL-E607`, never a silent pass. |
 
@@ -49,11 +49,11 @@ python tests/run_all.py
 | Proposal protocol self-check | 18/18 |
 | Package structure | 6/6 |
 | Pipeline integration | 18/18 |
-| Python back end | 12/12 |
+| Code generation | 24/24 |
 | SDL runtime | 10/10 |
 | Assignability | 17/17 |
 | Compatibility | 15/15 |
-| Proposal recipes | 29/29 |
+| Proposal recipes | 30/30 |
 | Every example document | 22/22 validate |
 | Examples unchanged by the test suite | yes |
 
@@ -113,7 +113,8 @@ archive/                    superseded specifications, notes and legacy tools
   -> sdl.backends    layer 7   codegen / runtime
 ```
 
-Only the Python back end is implemented. A project may name any language,
+The toolchain implements two back ends, Python and NodeJS/TypeScript. A
+project selects one with `backend.target`. A project may name any language,
 because the specification is independent of the languages a toolchain speaks,
 but the **build** refuses a target it cannot produce (`SDL-E605`) instead of
 producing something else.

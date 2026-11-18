@@ -29,20 +29,44 @@ version in `VERSION` is the current core version of the working tree.
   outside the project, is refused (`SDL-E602`).
 * The resolver now records whether a parameter or a field is `Optional<T>`, so
   a flow does not have to map a parameter the caller may omit.
+* The generated runtime of the Python back end resolves a step that names an
+  interface method (`Interface::method`) through the bindings table, as section
+  6.2 requires and as the interpreter already did. The generated dispatcher had
+  looked the whole name up directly, which only worked for a module function.
 
 ### Added
 
+* The **NodeJS/TypeScript back end** (`sdl/backends/codegen/typescript_gen.py`),
+  selected by `backend.target: nodejs`. It generates the types as interfaces,
+  an SDL enum as a union type and a `const` object, the interfaces as
+  interfaces whose methods return a `Promise`, the flows as async functions
+  with an explicit data flow, and a small runtime (a registry and a dispatcher
+  that resolves `Interface::method` through the bindings, as section 6.2
+  requires). The output is **erasable** TypeScript, so `node` runs it by
+  stripping the types. `sdl.backends.codegen_for` selects the back end of a
+  project, and `sdl/semantics/core10.py` now knows that `nodejs` hosts
+  TypeScript and JavaScript.
+* `sdl/flow/expressions.py` — `render_typescript`, the TypeScript counterpart
+  of `render_python`, so a condition is parsed and rendered rather than copied.
+* `tests/test_codegen.py` — checks of the NodeJS back end: every generated file
+  runs under Node, the generation is deterministic, a condition is not copied
+  as text, and the dispatcher resolves an interface method through the
+  bindings. A new fixture, `tests/fixtures/typescript/`, exercises an enum, an
+  alias, `Optional`, `List`, `Map`, a condition and an error strategy.
 * `sdl/types/assignability.py` — `assignable_expressions` and
   `is_optional_expression`, the rules of section 6.7 applied to the type
   *expressions* of the documents, so the proposal policy can decide a
   signature change before the project is compiled.
 * Recipes: adding an optional parameter, a type change with a migration plan,
   and a type change without one, with too narrow a plan, and with a document
-  that does not exist (`tests/recipes.py`, now 29 recipes).
+  that does not exist; and pointing a `nodejs` back end at a TypeScript
+  implementation (`tests/recipes.py`, now 30 recipes).
 * `tests/test_assignability.py` — the expression-level rules.
 
 ### Removed from the known gaps
 
+* a project whose `backend.target` is `nodejs` now builds, so `examples/hero_site`
+  compiles to TypeScript;
 * the form of the migration plan is now defined and checked;
 * the policy no longer requires a version increment for a signature change that
   does not break the contract.

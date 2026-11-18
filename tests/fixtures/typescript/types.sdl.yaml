@@ -1,0 +1,27 @@
+sdl: "1.0"
+kind: types
+
+types:
+  Priority:
+    id: Priority
+    version: "1.0.0"
+    enum:
+      - low
+      - normal
+      - high
+
+  Reference:
+    id: Reference
+    version: "1.0.0"
+    type: String
+
+  Order:
+    id: Order
+    version: "1.0.0"
+    fields:
+      id: UUID
+      note: Optional<String>
+      tags: List<String>
+      scores: Map<String, Int>
+      priority: Priority
+      reference: Reference

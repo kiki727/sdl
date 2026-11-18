@@ -994,6 +994,7 @@ class ProjectContext:
     #: The languages a back end of the toolchain can host.
     HOSTED_LANGUAGES: dict[str, frozenset[str]] = {
         "python": frozenset({"python"}),
+        "nodejs": frozenset({"typescript", "javascript"}),
     }
 
     def _check_backend(self) -> None:

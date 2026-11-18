@@ -114,9 +114,9 @@ def main() -> int:
     )
     results.append(
         (
-            "Python back end",
+            "Code generation",
             _run(
-                "Python back end test",
+                "Code generation test",
                 [sys.executable, "tests/test_codegen.py"],
             ),
         )

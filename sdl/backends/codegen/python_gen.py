@@ -412,9 +412,28 @@ from .errors import StepFailed
 from .registry import Registry
 
 
+def resolve_target(registry: Registry, target: str) -> Any:
+    """The callable a target names.
+
+    Specification section 6.2: when a module calls a method of an interface,
+    the runtime uses the bindings table to determine which concrete code to
+    execute. So ``Checker::check`` is resolved to the method of the
+    implementation the project bound to ``Checker``.
+    """
+    if target in registry:
+        return registry.resolve(target)
+    owner, separator, member = target.partition("::")
+    if separator and owner in registry:
+        implementation = registry.resolve(owner)
+        method = getattr(implementation, member, None)
+        if method is not None:
+            return method
+    return registry.resolve(target)
+
+
 async def call(registry: Registry, target: str, **arguments: Any) -> Any:
     """Call the target of a step and await it when it is asynchronous."""
-    implementation = registry.resolve(target)
+    implementation = resolve_target(registry, target)
     result = implementation(**arguments)
     if asyncio.iscoroutine(result):
         result = await result

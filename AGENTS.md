@@ -49,11 +49,11 @@ Required result: **all eleven groups pass**.
 * Proposal protocol self-check: 18/18
 * Package structure: 6/6
 * Pipeline integration: 18/18
-* Python back end: 12/12
+* Code generation: 24/24
 * SDL runtime: 10/10
 * Assignability: 17/17
 * Compatibility: 15/15
-* Proposal recipes: 29/29
+* Proposal recipes: 30/30
 * Every example document validates
 * The test suite changes nothing in the repository
 
@@ -99,27 +99,42 @@ python -m sdl run examples/payment_system/project.sdl.yaml --flow process_custom
 What is left is not a layer but a breadth:
 
 * **other back ends.** The `backend.target` of a project may name another
-  language. Only Python is implemented. The build refuses a target it cannot
-  produce (`SDL-E605`) instead of producing something else, and the rule of
-  section 7.2 is only checked for the back ends the toolchain implements,
-  because only those know which languages they can host.
+  language. Python and NodeJS/TypeScript are implemented. The build refuses a
+  target it cannot produce (`SDL-E605`) instead of producing something else,
+  and the rule of section 7.2 is only checked for the back ends the toolchain
+  implements, because only those know which languages they can host.
 * **the normalisation of a merged document.** A merged document is
   re-serialised, so its formatting is normalised. The content is preserved.
 
-### The Python back end
+### The back ends
 
-The generated source must satisfy three rules:
+A back end is selected by the `backend.target` of the project, through
+`sdl.backends.codegen_for`. `IMPLEMENTED_TARGETS` is the list of the targets
+the toolchain can produce, and `sdl.backends.CODEGEN` maps each to its
+generator. The Python back end is `sdl/backends/codegen/python_gen.py`, the
+NodeJS one is `sdl/backends/codegen/typescript_gen.py`.
 
-* it must be **valid Python**. Every generated file is parsed by the test
-  suite before it is accepted.
+The generated source must satisfy three rules, for either back end:
+
+* it must be **valid in its language**. Every generated Python file is parsed
+  by the test suite, and every generated TypeScript file is run by Node, which
+  strips the types.
 * it must be **deterministic**. The same canonical IR produces the same
   bytes.
 * it must not carry **anything the document wrote as raw text**. A condition
-  is parsed into a tree and rendered, a type is mapped to a Python type, and
-  a name is rendered as a string literal.
+  is parsed into a tree and rendered, a type is mapped to a type of the target,
+  and a name is rendered as a string literal.
 
 A rule that would break one of these needs a test in
 `tests/test_codegen.py` first.
+
+Two things are specific to TypeScript. JavaScript has no keyword arguments, so
+the inputs of a method travel as a single object. And the output must be
+**erasable** — no `enum`, no `namespace`, no parameter property — so that Node
+can run the source by stripping the types; an SDL enum is written as a union
+type and a `const` object. The checks that need Node are skipped, with a
+printed note, when no Node with `--experimental-strip-types` is on the `PATH`;
+CI installs one.
 
 ### The runtime
 

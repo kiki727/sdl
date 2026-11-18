@@ -324,6 +324,41 @@ implementation:
     project.write_text(text, encoding="utf-8")
 
 
+def setup_with_typescript_implementation(root: Path) -> None:
+    """Add an implementation written in TypeScript.
+
+    The NodeJS back end of the toolchain can host it, so a project that names
+    ``nodejs`` and binds it is valid; a project that names a target which
+    cannot host it is refused (``SDL-E606``).
+    """
+    _write(
+        root,
+        "typescript_implementation.sdl.yaml",
+        """sdl: "1.0"
+kind: implementation
+
+implementation:
+  id: greeter_ts
+  version: "1.0.0"
+  implements:
+    - interface: Greeter
+      version: "1.0.0"
+  language: typescript
+  source:
+    file: "src/greeter.ts"
+    symbol: Greeter
+""",
+    )
+    _write(root, "src/greeter.ts", "export class Greeter {}\n")
+    project = root / "project.sdl.yaml"
+    text = project.read_text(encoding="utf-8")
+    text = text.replace(
+        '    - path: "flow.sdl.yaml"',
+        '    - path: "flow.sdl.yaml"\n    - path: "typescript_implementation.sdl.yaml"',
+    )
+    project.write_text(text, encoding="utf-8")
+
+
 def setup_with_optional_greeter(root: Path) -> None:
     """Let the implementation accept the parameter the proposal adds.
 
@@ -837,6 +872,20 @@ RECIPES: list[Recipe] = [
         setup=setup_with_rust_implementation,
         expect="rejected",
         phase="semantic",
+    ),
+    Recipe(
+        name="point a nodejs backend at a TypeScript implementation",
+        rule="§7.2 the target must be compatible with the languages of the implementations",
+        patches=[
+            Patch(target="project.backend.target", action=REPLACE, value="nodejs"),
+            Patch(
+                target="project.bindings[Greeter].implementation",
+                action=REPLACE,
+                value="greeter_ts",
+            ),
+        ],
+        setup=setup_with_typescript_implementation,
+        expect="accepted",
     ),
     Recipe(
         name="patch a document that does not exist",

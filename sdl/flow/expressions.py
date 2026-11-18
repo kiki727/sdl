@@ -18,6 +18,7 @@ text.
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from typing import Any, Iterable, Union
@@ -270,6 +271,38 @@ def render_python(node: Node, state: str = "state") -> str:
 def _render_path(path: str, state: str) -> str:
     parts = path.split(".")
     rendered = f'{state}[{parts[0]!r}]'
+    for part in parts[1:]:
+        rendered += f".{part}"
+    return rendered
+
+
+def render_typescript(node: Node, state: str = "state") -> str:
+    """Render a condition as a TypeScript expression.
+
+    The same guarantee as :func:`render_python`: the result carries only the
+    names of the state paths, as property accesses on the state object, so a
+    condition cannot inject code into the generated source.
+    """
+    if isinstance(node, Literal):
+        if isinstance(node.value, bool):
+            return "true" if node.value else "false"
+        if isinstance(node.value, str):
+            return json.dumps(node.value, ensure_ascii=False)
+        return str(node.value)
+    if isinstance(node, Variable):
+        return _render_typescript_path(node.path, state)
+    if isinstance(node, Not):
+        return f"!({render_typescript(node.operand, state)})"
+    if isinstance(node, Binary):
+        left = render_typescript(node.left, state)
+        right = render_typescript(node.right, state)
+        return f"({left} {node.operator} {right})"
+    raise TypeError(f"Unknown condition node: {node!r}")
+
+
+def _render_typescript_path(path: str, state: str) -> str:
+    parts = path.split(".")
+    rendered = f"{state}[{json.dumps(parts[0], ensure_ascii=False)}]"
     for part in parts[1:]:
         rendered += f".{part}"
     return rendered

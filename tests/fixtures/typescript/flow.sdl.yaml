@@ -1,0 +1,35 @@
+sdl: "1.0"
+kind: flow
+
+flow:
+  id: describe_order
+  version: "1.0.0"
+  imports:
+    - path: "interfaces.sdl.yaml"
+    - path: "types.sdl.yaml"
+
+  inputs:
+    order: Order
+
+  steps:
+    - id: rank_order
+      call: PriorityService::rank
+      mapping:
+        order: order
+      output_map:
+        priority: result
+
+    - id: note_the_priority
+      call: PriorityService::rank
+      condition: order.priority == "high"
+      mapping:
+        order: order
+      output_map:
+        urgent: result
+      on_error: ignore
+
+  outputs:
+    priority: Priority
+
+  output_mapping:
+    priority: priority
