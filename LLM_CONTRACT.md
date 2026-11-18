@@ -109,10 +109,10 @@ These are gaps in the current implementation, not in the contract. An agent
 must not assume they are enforced until the corresponding status row in
 `README.md` says they are.
 
-- A merged document is re-serialised from its data, so its layout is
-  normalised: the blank lines, the quoting and the indentation are the
-  toolchain's, not the author's. The comments are preserved, beside the nodes
-  they annotate; a comment on a node a patch removed is dropped.
+- A merged document is re-serialised from its data, so its indentation and
+  its quoting are the toolchain's, not the author's. The comments and the
+  blank lines are preserved, around the nodes they belong to; a comment or a
+  blank line that belonged to a node a patch removed is dropped.
 
 ## 6. What the engine already enforces
 
