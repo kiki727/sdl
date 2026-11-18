@@ -1,0 +1,13 @@
+sdl: "1.0"
+kind: implementation
+
+implementation:
+  id: old_provider
+  version: "0.9.0"
+  implements:
+    - interface: PaymentProvider
+      version: "1.0.0"
+  language: python
+  source:
+    file: "src/old_provider.py"
+    symbol: OldProvider

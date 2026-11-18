@@ -1,0 +1,16 @@
+sdl: "1.0"
+kind: project
+
+project:
+  id: compatibility_generic
+  version: "1.0.0"
+
+  imports:
+    - path: "types.sdl.yaml"
+    - path: "interfaces.sdl.yaml"
+    - path: "implementation.sdl.yaml"
+
+  bindings:
+    - interface: PaymentProvider
+      version: "1.0.0"
+      implementation: generic_provider

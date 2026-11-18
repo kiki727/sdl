@@ -1,0 +1,14 @@
+sdl: "1.0"
+kind: project
+
+project:
+  id: compatibility_invalid
+  version: "1.0.0"
+
+  imports:
+    - path: "types.sdl.yaml"
+    - path: "interfaces.sdl.yaml"
+    - path: "impl_narrow.sdl.yaml"
+    - path: "impl_wide.sdl.yaml"
+    - path: "impl_incomplete.sdl.yaml"
+    - path: "impl_old.sdl.yaml"

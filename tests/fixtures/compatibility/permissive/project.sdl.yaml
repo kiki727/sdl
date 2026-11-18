@@ -1,0 +1,12 @@
+sdl: "1.0"
+kind: project
+
+project:
+  id: compatibility_permissive
+  version: "1.0.0"
+
+  imports:
+    - path: "types.sdl.yaml"
+    - path: "interfaces.sdl.yaml"
+    - path: "default_implementation.sdl.yaml"
+    - path: "keyword_implementation.sdl.yaml"

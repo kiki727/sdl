@@ -1,0 +1,9 @@
+sdl: "1.0"
+kind: types
+
+types:
+  Greeting:
+    id: Greeting
+    version: "1.0.0"
+    fields:
+      message: String

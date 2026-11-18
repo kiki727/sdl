@@ -1,0 +1,64 @@
+sdl: "1.0"
+kind: flow
+
+flow:
+  id: conditional_flow
+  version: "1.0.0"
+  imports:
+    - path: "interfaces.sdl.yaml"
+    - path: "types.sdl.yaml"
+    - path: "helper.sdl.yaml"
+
+  inputs:
+    value: String
+
+  steps:
+    - id: check_the_value
+      call: Checker::check
+      mapping:
+        value: value
+      output_map:
+        check_result: result
+
+    - id: retry_the_description
+      call: helper::describe
+      mapping:
+        value: value
+      output_map:
+        retried: result
+      on_error: retry
+      retry:
+        attempts: 3
+        backoff: exponential
+        initial_interval: 1s
+        max_interval: 30s
+
+    - id: describe_the_value
+      call: helper::describe
+      condition: check_result.is_valid == true
+      mapping:
+        value: value
+      output_map:
+        description: result
+
+    - id: ignore_the_failure
+      call: helper::describe
+      mapping:
+        value: value
+      output_map:
+        ignored: result
+      on_error: ignore
+
+    - id: go_back_on_failure
+      call: helper::describe
+      mapping:
+        value: value
+      output_map:
+        retried_again: result
+      on_error: goto describe_the_value
+
+  outputs:
+    description: String
+
+  output_mapping:
+    description: description

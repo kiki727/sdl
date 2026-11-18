@@ -1,0 +1,24 @@
+sdl: "1.0"
+kind: proposal
+
+proposal:
+  id: prop_add_hero_description
+  target_version: "1.0.0"
+  author: "agent-gemma4"
+  rationale: "Adding a description to the hero section to improve SEO and UX."
+
+  patches:
+    - target: "types.sdl.yaml:HeroContent.fields"
+      action: add
+      value:
+        description: String
+
+    - target: "interface_content.sdl.yaml:methods[get_hero_content].outputs"
+      action: replace
+      value:
+        type: HeroContent
+
+    - target: "interface_template.sdl.yaml:methods[render_hero].inputs"
+      action: replace
+      value:
+        content: HeroContent

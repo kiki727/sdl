@@ -1,0 +1,26 @@
+sdl: "1.0"
+kind: flow
+
+flow:
+  id: greet_someone
+  version: "1.0.0"
+  imports:
+    - path: "interfaces.sdl.yaml"
+    - path: "types.sdl.yaml"
+
+  inputs:
+    name: String
+
+  steps:
+    - id: greet
+      call: Greeter::greet
+      mapping:
+        name: name
+      output_map:
+        greeting: result
+
+  outputs:
+    message: String
+
+  output_mapping:
+    message: greeting.message

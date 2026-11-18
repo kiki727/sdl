@@ -1,0 +1,13 @@
+sdl: "1.0"
+kind: implementation
+
+implementation:
+  id: greeter_impl
+  version: "1.0.0"
+  implements:
+    - interface: Greeter
+      version: "1.0.0"
+  language: python
+  source:
+    file: "src/greeter.py"
+    symbol: Greeter

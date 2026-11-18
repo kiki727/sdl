@@ -1,0 +1,13 @@
+sdl: "1.0"
+kind: proposal
+
+proposal:
+  id: prop_guard_the_greeting
+  target_version: "1.0.0"
+  author: "demo"
+  rationale: "Only greet when a name was given."
+
+  patches:
+    - target: "flow.sdl.yaml:steps[greet].condition"
+      action: add
+      value: name != ""

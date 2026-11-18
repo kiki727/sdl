@@ -1,0 +1,8 @@
+sdl: "1.0"
+kind: types
+
+types:
+  Widget:
+    id: Widget
+    id: Gadget
+    version: "1.0.0"

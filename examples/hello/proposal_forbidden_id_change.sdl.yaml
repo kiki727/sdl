@@ -1,0 +1,13 @@
+sdl: "1.0"
+kind: proposal
+
+proposal:
+  id: prop_rename_the_greeting
+  target_version: "1.0.0"
+  author: "demo"
+  rationale: "A demonstration of a proposal the policy of section 4.3 forbids."
+
+  patches:
+    - target: "types.sdl.yaml:Greeting.id"
+      action: replace
+      value: Renamed

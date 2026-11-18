@@ -1,0 +1,17 @@
+sdl: "1.0"
+kind: flow
+
+flow:
+  id: undefined_state
+  version: "1.0.0"
+
+  inputs:
+    name: String
+
+  steps:
+    - id: build_greeting
+      call: greeter::greet
+      mapping:
+        name: missing_variable
+      output_map:
+        greeting: result

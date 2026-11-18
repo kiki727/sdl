@@ -1,0 +1,16 @@
+sdl: "1.0"
+kind: interface
+
+interface:
+  id: Checker
+  version: "1.0.0"
+  imports:
+    - path: "types.sdl.yaml"
+
+  methods:
+    - id: check
+      version: "1.0.0"
+      inputs:
+        value: String
+      outputs:
+        type: Check

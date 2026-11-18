@@ -1,0 +1,16 @@
+sdl: "1.0"
+kind: interface
+
+interface:
+  id: TemplateEngine
+  version: "1.0.0"
+  imports:
+    - path: "types.sdl.yaml"
+  
+  methods:
+    - id: render_hero
+      version: "1.0.0"
+      inputs:
+        content: HeroContent
+      outputs:
+        type: String

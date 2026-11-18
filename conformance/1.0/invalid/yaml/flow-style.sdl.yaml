@@ -1,0 +1,8 @@
+sdl: "1.0"
+kind: types
+
+types:
+  Widget:
+    id: Widget
+    version: "1.0.0"
+    fields: {width: Int, height: Int}

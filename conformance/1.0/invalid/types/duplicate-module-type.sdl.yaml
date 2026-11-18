@@ -1,0 +1,14 @@
+sdl: "1.0"
+kind: module
+
+module:
+  id: duplicated_module
+  types:
+    - id: LocalLabel
+      version: "1.0.0"
+      fields:
+        text: String
+    - id: LocalLabel
+      version: "1.0.0"
+      fields:
+        text: String

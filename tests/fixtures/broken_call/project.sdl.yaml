@@ -1,0 +1,9 @@
+sdl: "1.0"
+kind: project
+
+project:
+  id: broken_call_project
+  version: "1.0.0"
+
+  imports:
+    - path: "flow.sdl.yaml"

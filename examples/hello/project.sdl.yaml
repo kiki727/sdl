@@ -1,0 +1,25 @@
+sdl: "1.0"
+kind: project
+
+project:
+  id: hello_project
+  version: "1.0.0"
+
+  imports:
+    - path: "types.sdl.yaml"
+    - path: "interfaces.sdl.yaml"
+    - path: "implementations.sdl.yaml"
+    - path: "flow.sdl.yaml"
+
+  bindings:
+    - interface: Greeter
+      version: "1.0.0"
+      implementation: greeter_impl
+
+  policy:
+    forbidden_id_changes: true
+    disallow_breaking_changes: true
+
+  backend:
+    target: python
+    mode: execute

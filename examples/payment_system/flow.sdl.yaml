@@ -1,0 +1,39 @@
+sdl: "1.0"
+kind: flow
+
+flow:
+  id: process_customer_payment
+  version: "1.0.0"
+  imports:
+    - path: "interfaces.sdl.yaml"
+    - path: "types.sdl.yaml"
+
+  inputs:
+    order_id: UUID
+    amount: Decimal
+    token: String
+
+  steps:
+    - id: create_request
+      call: payment_helper::build_request
+      mapping:
+        amount: amount
+        token: token
+      output_map:
+        request: result
+
+    - id: execute_payment
+      call: PaymentProvider::charge
+      mapping:
+        request: request
+      output_map:
+        payment_result: result
+      on_error: fail
+
+  outputs:
+    success: Boolean
+    tx_id: UUID
+
+  output_mapping:
+    success: payment_result.success
+    tx_id: payment_result.tx_id

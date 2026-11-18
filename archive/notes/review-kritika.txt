@@ -1,0 +1,578 @@
+Procitao sam sdl-0.3.md
+
+Šta mi se najviše dopada
+
+1. SDL kao source of truth
+Ovo je verovatno najvažnija ideja celog projekta.
+
+Umesto da imaš:
+    dokumentaciju na jednom mestu;
+    API definicije na drugom;
+    implementacije na trećem;
+    arhitektonska pravila u testovima;
+    poslovnu logiku u kodu;
+imaš jednu formalnu specifikaciju koja sve povezuje.
+
+2. Razdvajanje Interface / Implementation / Binding
+Ovo je odlična odluka.
+Posebno mi se dopada što možeš da promeniš implementaciju bez promene modula koji zavisi od interfejsa.
+
+3. LLM Proposal Protocol
+Ovo je možda najinteresantniji deo za budućnost.
+LLM ne menja direktno sistem, nego predlaže formalne promene. Zatim SDL validator proverava:
+    da li je predlog sintaksno validan;
+    da li reference postoje;
+    da li krši pravila projekta;
+    da li je rezultat semantički validan.
+To je mnogo bolji pristup nego davati AI agentu slobodu da menja proizvoljne fajlove u projektu.
+
+4. Canonical IR
+Ovo je pravi pravac ako želiš više ciljnih jezika.
+Jednom napraviš parser, semantički validator i IR, a zatim različite backend-e.
+
+4. Problemi koje bih obavezno rešio pre verzije 0.4
+Ovde ću biti stroži, jer su ovo problemi koji mogu da postanu ozbiljne prepreke pri implementaciji.
+
+4.1. Nedoslednost u Flow mapping-u
+U tvom primeru:
+yaml
+
+output_map:
+  is_valid: status
+
+A sledeći korak koristi:
+yaml
+
+mapping:
+  token: status.payment_token
+
+condition: status.is_valid == true
+
+Ovde postoji kontradikcija.
+
+Po pravilima iz dokumenta, is_valid: status znači da se vrednost izlaznog polja status smešta u promenljivu is_valid.
+
+Ali sledeći korak očekuje objekat status koji sadrži is_valid i payment_token.
+
+Verovatno si želeo:
+yaml
+
+output_map:
+  status: result
+
+A onda:
+yaml
+
+mapping:
+  token: status.payment_token
+
+condition: status.is_valid == true
+
+Ovo je mnogo konzistentnije.
+4.2. Flow nije dovoljno definisan za produkciju
+
+Trenutno imaš sekvencijalne korake, uslove i osnovni error handling.
+
+Ali nedostaju:
+
+    Parallel execution.
+
+    Loops i iteracije.
+
+    Subflows.
+
+    Timeout.
+
+    Cancellation.
+
+    Compensation i rollback.
+
+    Asynchronous operations.
+
+    Event-based triggers.
+
+    Idempotency.
+
+    Definisanje granica transakcije.
+
+Posebno bih dodao koncept compensation za poslovne procese.
+
+Primer: naplata kartice uspe, ali rezervacija proizvoda ne uspe. Sistem mora imati definisano šta se dešava sa prethodno izvršenom naplatom.
+
+Temporal i BPMN imaju mnogo toga što možeš proučiti u ovom kontekstu.
+4.3. Nedostaje precizna semantika izlaza Flow-a
+
+Definišeš:
+yaml
+
+outputs:
+  success: Boolean
+  transaction_id: UUID
+
+Ali ne definišeš kako se success i transaction_id zapravo popunjavaju.
+
+Potrebno je nešto poput:
+yaml
+
+outputs:
+  success:
+    type: Boolean
+    value: payment_result.success
+
+  transaction_id:
+    type: Optional<UUID>
+    value: payment_result.transaction_id
+
+Naravno, ovo je samo predlog sintakse.
+
+Moraš definisati i ponašanje kada uslov preskoči korak ili kada korak završi greškom.
+4.4. Retry mora imati precizniju definiciju
+
+Trenutno piše:
+yaml
+
+on_error: retry
+retry: 3
+
+Treba definisati:
+
+    Da li je 3 ukupan broj pokušaja ili broj ponavljanja?
+
+    Da li postoji exponential backoff?
+
+    Koje greške se ponavljaju?
+
+    Da li postoji maksimalno vreme?
+
+    Šta se dešava ako retry nije bezbedan zbog sporednih efekata?
+
+Ovo nije samo detalj implementacije. To je deo semantike jezika.
+4.5. Interface Compatibility ima nekoliko otvorenih pitanja
+
+Covariance i contravariance su dobro postavljeni.
+
+Međutim, treba formalizovati:
+
+    Generičke tipove i njihovu varijansu.
+
+    Optional parametre.
+
+    Default vrednosti.
+
+    Dodavanje novih parametara.
+
+    Promenu redosleda parametara.
+
+    Async i sync metode.
+
+    Error tipove.
+
+    Efekte i sporedne efekte metoda.
+
+Posebno je bitno da Result<StripePayment, Error> može biti podtip Result<Payment, Error> samo ako je Result definisan sa odgovarajućom kovarijantnošću prvog tipa.
+
+To ne sme biti implicitna pretpostavka.
+4.6. Invariants trenutno nisu dovoljno snažni
+
+Primer:
+yaml
+
+invariants:
+  - "balance >= 0"
+  - "currency != null"
+
+Prvo pitanje je: da li je invariant precondition, postcondition ili pravilo koje važi tokom čitavog životnog ciklusa objekta?
+
+Drugo pitanje: ko garantuje njegovo održavanje?
+
+Validator koji samo proverava sintaksu ne može dokazati da implementacija poštuje invariant.
+
+Predložio bih razlikovanje:
+
+    preconditions
+
+    postconditions
+
+    invariants
+
+4.7. Proposal Protocol treba zaštititi od semantički validnih, ali opasnih promena
+
+Ovo je važno za AI sisteme.
+
+Predlog može biti sintaksno i semantički validan, a ipak napraviti neželjenu promenu ponašanja.
+
+Zato bih dodao:
+
+    pregled uticaja promene (impact analysis);
+
+    testove pre i posle izmene;
+
+    obavezno odobrenje za određene klase promena;
+
+    audit trail;
+
+    proveru ovlašćenja agenta;
+
+    mogućnost rollback-a.
+
+Takođe, target string putanje ne bi trebalo direktno izvršavati kao proizvoljnu instrukciju. Potreban je formalno definisan patch model.
+4.8. Canonical IR je još nedovoljno opisan
+
+Trenutno imaš Symbols i Edges, ali treba definisati:
+
+    Identitet simbola.
+
+    Scope i namespace.
+
+    Verzije simbola.
+
+    Tipizaciju svih veza.
+
+    Pravila za ciklične zavisnosti.
+
+    Normalizaciju i kanonikalizaciju.
+
+    Stabilnost IR-a između verzija.
+
+    Deterministički redosled generisanja.
+
+    Source maps, odnosno vezu između IR-a i originalnog SDL dokumenta.
+
+Takođe, nedostaju neke relacije, kao HAS_OUTPUT, BINDS_TO, HAS_INVARIANT, HAS_DEPENDENCY i HAS_EFFECT.
+5. Direktno poređenje: SDL naspram postojećih tehnologija
+
+Ovo je možda najvažnija tabela za donošenje odluke o daljem razvoju.
+
+Sposobnost
+	
+
+SDL 0.3
+	
+
+Smithy
+	
+
+Step Functions
+	
+
+Temporal
+	
+
+BPMN
+
+Tipizirani modeli
+	
+
+Da
+	
+
+Da
+	
+
+Ograničeno
+	
+
+Kroz kod
+	
+
+Ograničeno
+
+Interfejsi i ugovori
+	
+
+Da
+	
+
+Da
+	
+
+Ne
+	
+
+Kroz kod
+	
+
+Delimično
+
+Flow orchestration
+	
+
+Da
+	
+
+Ne
+	
+
+Da
+	
+
+Da
+	
+
+Da
+
+Eksplicitni data mapping
+	
+
+Da
+	
+
+Delimično
+	
+
+Da
+	
+
+Kroz kod
+	
+
+Delimično
+
+Implementacioni binding
+	
+
+Da
+	
+
+Delimično
+	
+
+Integracije
+	
+
+Kroz kod
+	
+
+Integracije
+
+Arhitektonske zabrane
+	
+
+Da
+	
+
+Validatori
+	
+
+Ne
+	
+
+Ne
+	
+
+Delimično
+
+Semver kompatibilnost
+	
+
+Da
+	
+
+Alati/konvencije
+	
+
+Ograničeno
+	
+
+Verzije koda
+	
+
+Ograničeno
+
+LLM change proposals
+	
+
+Da
+	
+
+Ne kao osnovni protokol
+	
+
+Ne
+	
+
+Ne
+	
+
+Ne
+
+Canonical IR
+	
+
+Da
+	
+
+Semantički model
+	
+
+Interni model
+	
+
+Interni model
+	
+
+Interni model
+
+Više backend jezika
+	
+
+Planirano
+	
+
+Da, kroz alate
+	
+
+Ne kao codegen DSL
+	
+
+SDK-ovi
+	
+
+Engine zavisan
+
+Tabela je konceptualno poređenje mogućnosti, a ne tvrdnja da navedene tehnologije nemaju dodatne ekstenzije ili integracije.
+
+Najvažniji izvori za dalje proučavanje:
+
+    Smithy 2.0 specifikacija  — posebno model, traits i validacija.
+
+    AWS Step Functions  — state machine i izvršavanje.
+
+    Temporal Workflows  — pouzdanost izvršavanja i dugotrajni procesi.
+
+    Buf Breaking Change Detection  — formalna kontrola kompatibilnosti.
+
+    ArchUnit User Guide  — arhitektonska pravila.
+
+6. Šta bih promenio u SDL arhitekturi
+
+Ne bih pokušavao da napraviš još jedan Smithy ili još jedan Step Functions.
+
+Predložio bih da SDL razvijaš kao Architecture and Execution Specification Language.
+
+Drugim rečima, SDL treba da bude jezik kojim se definiše kako je softverski sistem organizovan, kako funkcioniše i pod kojim uslovima sme da se menja.
+
+**********************************************************************************************************
+
+Predložio bih sledeću organizaciju:
+SDL Architecture
+
+SDL Specification -> Project · Modules · Types · Interfaces · Flows
+		
+->	Semantic Validator(Types, compatibility, invariants), Policy Engine(Constraints, prohibitions, policies)
+
+-> Canonical IR (Unified typed semantic representation)
+
+-> Codegen(Python · Rust · TS), Runtime(Flow execution), Analysis(Graph · Impact)
+
+-> LLM Proposal Layer(Propose → Validate → Simulate → Approve → Apply)
+
+
+
+
+
+**********************************************************************************************************
+
+Jedna važna stvar: LLM Proposal Layer ne bih stavljao samo kao dodatak jeziku. Razvio bih ga kao zaseban protokol koji koristi SDL parser, validator i IR.
+
+Tako bi i drugi alati mogli da predlažu izmene bez direktnog pristupa izvornim fajlovima.
+7. Šta nedostaje da SDL postane stvarno upotrebljiv?
+
+Moj predlog prioriteta:
+
+Verzija
+	
+
+Šta treba da donese
+
+0.4
+	
+
+Precizna gramatika, semantika i uklanjanje nejasnoća
+
+0.5
+	
+
+Formalni IR i validator
+
+0.6
+	
+
+Prvi Python backend i izvršavanje Flow-a
+
+0.7
+	
+
+Compatibility engine, policy engine i diff
+
+0.8
+	
+
+LLM Proposal Protocol i simulacija promena
+
+0.9
+	
+
+Više backend-a i ozbiljni testovi
+
+1.0
+	
+
+Stabilna specifikacija i referentna implementacija
+
+Ne bih još dodavao mnogo novih funkcionalnosti. Prvo bih formalizovao postojeće.
+
+Postoje i tri urednička problema u dokumentu koja treba rešiti:
+
+    §5 dolazi nakon §7, iako se na njega ranije poziva.
+
+    U primeru on_error: retry nije precizno definisana struktura retry konfiguracije.
+
+    Pravilo za završne Flow outputs ne može garantovati validan rezultat kada obavezni izlazi nisu popunjeni.
+
+8. Konačni sud
+SDL Core 0.3
+Vredi nastaviti razvoj
+
+Moja procena:
+
+    Kao koncept: veoma dobar.
+
+    Kao nova kategorija jezika: ima potencijal.
+
+    Kao konkurent pojedinačnim postojećim alatima: još nije dovoljno razvijen.
+
+    Kao objedinjeni sloj za specifikaciju, izvršavanje i kontrolisanu evoluciju softverskih sistema: najzanimljiviji je.
+
+Najveća opasnost za SDL nije da nema dovoljno funkcionalnosti.
+
+Najveća opasnost je da postane preširok: da istovremeno pokušava da bude IDL, workflow engine, dependency injection framework, architecture validator, compiler i AI agent protocol, a da nijedna od tih komponenti nije dovoljno precizno definisana.
+
+Zato bih insistirao na jednoj stvari:
+
+SDL mora imati jednu centralnu, formalno definisanu semantiku iz koje proizlaze sve ostale funkcionalnosti.
+
+To je ono što bi ga razlikovalo od obične kolekcije YAML konfiguracija.
+9. Tri pitanja koja su važna za dalji razvoj
+
+Voleo bih da razjasnimo namenu projekta pre nego što krenemo u ozbiljniju reviziju.
+
+1. Koji je krajnji cilj SDL-a?
+
+    A. Univerzalni jezik za definisanje softverske arhitekture.
+
+    B. Jezik iz kojeg se automatski generiše kompletna aplikacija.
+
+    C. Specifikacija kojom AI agenti razumeju, kreiraju i menjaju softverske sisteme.
+
+    D. Kombinacija svega navedenog.
+
+2. Da li SDL treba da bude izvršiv jezik?
+
+Odnosno, da li želiš da neko može da napiše kompletan poslovni proces u SDL-u, pokrene ga kroz SDL runtime i dobije funkcionalan sistem?
+
+3. Da li želiš da SDL bude potpuno nezavisan od postojećih tehnologija ili da koristi postojeće standarde gde god je moguće?
+
+Ovo je važno jer bih, u zavisnosti od odgovora, drugačije koncipirao SDL Core 0.4.
+
+Moj lični predlog je opcija D, ali uz jasno definisano jezgro: SDL kao formalni jezik specifikacije sistema, sa compiler-om, IR-om, runtime-om i AI governance slojem.

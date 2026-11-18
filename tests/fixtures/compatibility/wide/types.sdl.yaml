@@ -1,0 +1,16 @@
+sdl: "1.0"
+kind: types
+
+types:
+  PaymentRequest:
+    id: PaymentRequest
+    version: "1.0.0"
+    fields:
+      amount: Decimal
+
+  PaymentResponse:
+    id: PaymentResponse
+    version: "1.0.0"
+    fields:
+      success: Boolean
+      tx_id: UUID

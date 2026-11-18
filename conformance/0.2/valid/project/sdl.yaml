@@ -1,0 +1,25 @@
+sdl: "0.2"
+kind: project
+
+project:
+  id: task_manager
+  version: "1.0.0"
+  mode: structural
+
+  imports:
+    - path: modules/users.sdl.yaml
+    - path: modules/tasks.sdl.yaml
+    - path: interfaces/task_service.sdl.yaml
+    - path: types/common.sdl.yaml
+
+  types:
+    - id: ProjectId
+      type: UUID
+
+  interfaces:
+    - id: ProjectInfo
+      version: "1.0.0"
+      methods:
+        - id: get_project
+          output:
+            type: String

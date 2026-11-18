@@ -1,0 +1,38 @@
+sdl: "1.0"
+kind: project
+
+project:
+  id: hero_site_project
+  version: "1.0.0"
+
+  imports:
+    - path: "types.sdl.yaml"
+    - path: "interface_content.sdl.yaml"
+    - path: "interface_template.sdl.yaml"
+    - path: "impl_content.sdl.yaml"
+    - path: "impl_template.sdl.yaml"
+    - path: "flow.sdl.yaml"
+
+  bindings:
+    - interface: ContentProvider
+      version: "1.0.0"
+      implementation: json_content_provider
+
+    - interface: TemplateEngine
+      version: "1.0.0"
+      implementation: express_handlebars_engine
+
+  backend:
+    target: nodejs
+    mode: codegen
+    options:
+      framework: express
+      template_engine: handlebars
+      tsconfig_path: "tsconfig.json"
+
+  constraints:
+    forbidden_imports:
+      - from: hero_site_project
+        deny:
+          - direct_db_access
+        reason: "Frontend site must use ContentProvider, not query DB directly."

@@ -1,0 +1,14 @@
+sdl: "1.0"
+kind: implementation
+
+implementation:
+  id: stripe_provider_impl
+  version: "1.0.0"
+  implements:
+    - interface: PaymentProvider
+      version: "1.0.0"
+  
+  language: python
+  source:
+    file: src/payments/stripe_api.py
+    symbol: StripePaymentProvider

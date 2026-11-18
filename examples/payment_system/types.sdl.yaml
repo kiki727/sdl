@@ -1,0 +1,26 @@
+sdl: "1.0"
+kind: types
+
+types:
+  PaymentRequest:
+    id: PaymentRequest
+    version: "1.0.0"
+    fields:
+      amount: Decimal
+      currency: String
+      payment_method_token: String
+
+  PaymentResponse:
+    id: PaymentResponse
+    version: "1.0.0"
+    fields:
+      success: Boolean
+      tx_id: UUID
+      timestamp: DateTime
+
+  Error:
+    id: Error
+    version: "1.0.0"
+    fields:
+      code: String
+      message: String

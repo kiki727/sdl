@@ -1,0 +1,16 @@
+sdl: "1.0"
+kind: interface
+
+interface:
+  id: Greeter
+  version: "1.0.0"
+  imports:
+    - path: "types.sdl.yaml"
+
+  methods:
+    - id: greet
+      version: "1.0.0"
+      inputs:
+        name: String
+      outputs:
+        type: Greeting

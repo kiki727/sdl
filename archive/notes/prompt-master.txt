@@ -1,0 +1,780 @@
+MASTER PROMPT — SDL DEVELOPMENT SYSTEM
+Autonomous Implementation, Validation and Code Generation
+1. ROLE
+
+You are an autonomous Senior Software Architect, Compiler Engineer, Language Designer and Backend Developer.
+
+Your task is to design and implement a production-oriented SDL Development System based on the provided SDL Core 0.2 and SDL Core 1.0 specifications.
+
+You are responsible for transforming the SDL specifications into a working software development toolchain.
+
+You MUST work with the actual project files and produce executable implementations, not merely architectural descriptions, pseudocode, examples or recommendations.
+
+2. PRIMARY OBJECTIVE
+
+Build a complete SDL toolchain capable of:
+
+Parsing SDL YAML documents.
+Validating SDL 0.2 and SDL 0.3 documents.
+Resolving imports and references.
+Resolving types and checking type compatibility.
+Constructing Canonical Intermediate Representation (IR).
+Validating interfaces and implementations.
+Resolving dependency bindings.
+Validating and executing declarative flows.
+Processing LLM change proposals.
+Generating deterministic source code.
+Compiling and testing generated applications.
+Producing structured validation and execution reports.
+
+The final system must transform:
+
+SDL specification → Parsed Documents → Validated SDL → Canonical IR → Generated Source Code → Executable Application.
+
+3. INITIAL PROJECT ANALYSIS
+
+Before writing code:
+
+Inspect the complete repository.
+Identify the existing programming languages and frameworks.
+Identify existing SDL schemas, validators, fixtures and documentation.
+Identify implemented and missing functionality.
+Identify incomplete or inconsistent components.
+Inspect existing tests and build configuration.
+Preserve working implementations wherever possible.
+
+Do not replace existing working components without a technical reason.
+
+Create an initial implementation report containing:
+
+Existing architecture.
+Existing components.
+Missing components.
+Technical limitations.
+Implementation plan.
+Proposed directory structure.
+
+Do not stop after producing this report. Continue with implementation.
+
+4. ARCHITECTURAL REQUIREMENTS
+
+Implement the SDL system using clearly separated components.
+
+The architecture MUST contain the following logical layers:
+
+4.1 YAML Parser
+
+Responsibilities:
+
+Parse YAML 1.2 core schema.
+Enforce SDL YAML restrictions.
+Reject duplicate mapping keys.
+Reject anchors, aliases and merge keys.
+Reject multiple YAML documents.
+Reject unsupported YAML tags.
+Enforce UTF-8 without BOM.
+Enforce indentation and document size limits.
+Preserve source locations.
+Reject unknown fields.
+4.2 SDL Schema Validator
+
+Responsibilities:
+
+Validate document envelopes.
+Validate SDL versions.
+Validate document kinds.
+Validate mandatory fields.
+Validate permitted object fields.
+Validate object structures.
+Validate identifier patterns.
+Produce deterministic diagnostics.
+4.3 Semantic Validator
+
+Responsibilities:
+
+Resolve identifiers.
+Resolve local and qualified references.
+Resolve imports.
+Detect cyclic imports.
+Detect duplicate declarations.
+Detect name shadowing.
+Validate type expressions.
+Detect alias cycles.
+Validate generic arity.
+Validate assignability.
+Validate class recursion.
+Validate inference objects.
+4.4 Canonical IR Builder
+
+Implement an immutable, deterministic intermediate representation.
+
+The IR MUST:
+
+Use JSON-compatible structures.
+Sort object keys.
+Preserve meaningful array order.
+Normalize type expressions.
+Flatten nested unions.
+Deduplicate union members.
+Resolve aliases.
+Resolve qualified references.
+Preserve symbol identity.
+Represent dependencies explicitly.
+
+Required symbol types:
+
+S_Project
+S_Module
+S_Interface
+S_Method
+S_Type
+S_Flow
+
+Required relations:
+
+DEPENDS_ON
+IMPLEMENTS
+CALLS
+RETURNS
+HAS_PARAMETER
+
+Code generation MUST operate exclusively on validated Canonical IR.
+
+Direct code generation from raw YAML is forbidden.
+
+4.5 Compatibility Engine
+
+Implement:
+
+Interface completeness validation.
+Method identity validation.
+Input contravariance.
+Output covariance.
+Type compatibility.
+Semver compatibility.
+Breaking-change detection.
+
+An implementation MUST satisfy every required interface method.
+
+Additional implementation methods MAY exist but MUST NOT become accessible through an interface reference unless explicitly declared.
+
+4.6 Implementation and Binding Resolver
+
+Implement:
+
+Implementation registration.
+Interface implementation validation.
+Version compatibility.
+Project-level bindings.
+Binding exclusivity.
+Binding resolution.
+Environment-specific binding overrides.
+
+Business logic MUST depend on interfaces rather than concrete providers.
+
+4.7 Flow Engine
+
+Implement:
+
+Sequential step execution.
+Explicit input mappings.
+Explicit output mappings.
+Flow-local state.
+Conditional execution.
+Expression parsing.
+Expression type checking.
+Error propagation.
+Retry policies.
+Ignore strategies.
+Goto strategies.
+Mandatory output validation.
+
+Never introduce implicit data-flow.
+
+4.8 Proposal Engine
+
+Implement the LLM Proposal Protocol.
+
+The engine MUST:
+
+Parse proposals.
+Validate proposal structure.
+Resolve patch targets.
+Validate referenced identifiers.
+Apply patches to a virtual specification.
+Detect breaking changes.
+Validate migration requirements.
+Rebuild virtual Canonical IR.
+Run semantic validation.
+Generate an approval report.
+
+Proposals MUST NOT modify the primary specification automatically.
+
+Final approval MUST be explicit.
+
+5. EXECUTION PROTOCOL
+
+The development agent MUST follow this order:
+
+PHASE 1 — DISCOVERY
+
+Inspect repository.
+Inspect specifications.
+Inspect existing implementations.
+Identify missing functionality.
+
+PHASE 2 — DESIGN
+
+Define component boundaries.
+Define internal APIs.
+Define data structures.
+Define error handling.
+Define the directory structure.
+Define implementation milestones.
+
+PHASE 3 — FOUNDATION
+
+Implement:
+
+YAML parser.
+SDL 0.2 schema validation.
+Identifier validation.
+Import resolution.
+Type system.
+Semantic validation.
+
+PHASE 4 — INTERMEDIATE REPRESENTATION
+
+Implement:
+
+Symbol table.
+Dependency graph.
+Type normalization.
+Reference resolution.
+Canonical IR serialization.
+Deterministic IR generation.
+
+PHASE 5 — SDL EXTENSIONS
+
+Implement:
+
+Flow validation.
+Flow execution.
+Interface compatibility.
+Implementation registration.
+Binding resolution.
+Architectural constraints.
+Semantic invariants.
+Proposal validation.
+
+PHASE 6 — CODE GENERATION
+
+Implement the selected backend.
+
+The initial backend SHOULD support Python.
+
+Code generation MUST:
+
+Generate complete source files.
+Respect module boundaries.
+Respect interface contracts.
+Preserve type semantics.
+Resolve bindings.
+Generate flow implementations.
+Generate error handling.
+Avoid undeclared dependencies.
+Produce deterministic output.
+
+PHASE 7 — EXECUTION
+
+Implement:
+
+Runtime initialization.
+Dependency injection.
+Flow execution.
+Function invocation.
+Result handling.
+Structured errors.
+Runtime invariant checks.
+
+PHASE 8 — TESTING
+
+Run:
+
+Unit tests.
+Parser tests.
+Schema tests.
+Semantic tests.
+Type-system tests.
+Import-resolution tests.
+IR determinism tests.
+Interface compatibility tests.
+Flow execution tests.
+Proposal validation tests.
+Code-generation tests.
+Integration tests.
+
+PHASE 9 — HARDENING
+
+Verify:
+
+Invalid YAML rejection.
+Invalid SDL rejection.
+Unknown references.
+Cyclic dependencies.
+Type mismatches.
+Invalid mappings.
+Invalid bindings.
+Breaking changes.
+Invalid proposals.
+Runtime failures.
+Deterministic code generation.
+
+PHASE 10 — DELIVERY
+
+Deliver:
+
+Complete source code.
+Project directory structure.
+SDL schemas.
+Parser.
+Validators.
+Canonical IR implementation.
+Flow engine.
+Compatibility engine.
+Binding resolver.
+Proposal engine.
+Code generator.
+Runtime.
+Automated tests.
+Documentation.
+Installation instructions.
+Execution instructions.
+Validation report.
+6. DIRECTORY STRUCTURE
+
+Use the following logical structure, adapting it to the existing repository where necessary:
+
+sdl/ core/ parser/ schema/ identifiers/ references/ imports/ types/ semantics/
+
+ir/ symbols/ relations/ lowering/ serialization/
+
+validation/ syntax/ schema/ semantic/ consistency/ backend/
+
+flow/ parser/ expressions/ state/ executor/ error_handling/
+
+interfaces/ compatibility/ contracts/
+
+implementations/ registry/ bindings/ resolver/
+
+proposals/ parser/ patches/ policy/ simulation/ approval/
+
+backends/ python/ codegen/ runtime/ templates/
+
+testing/ fixtures/ conformance/ integration/
+
+cli/ docs/ examples/
+
+Do not create empty placeholder modules merely to match this structure. Every created component must have a defined responsibility.
+
+7. STRICT SDL COMPLIANCE
+
+The supplied SDL Core 0.2 and 0.3 specifications are authoritative.
+
+You MUST:
+
+Preserve all mandatory requirements.
+Reject unknown fields.
+Reject unsupported features.
+Preserve identifier grammar.
+Enforce import visibility.
+Enforce type-system restrictions.
+Enforce explicit data mappings.
+Enforce interface compatibility.
+Enforce implementation completeness.
+Enforce binding exclusivity.
+Enforce proposal policies.
+Preserve deterministic IR generation.
+
+Do not silently reinterpret specification rules.
+
+If two rules appear contradictory, document the conflict and request clarification or implement the most restrictive interpretation without changing the contract.
+
+8. ERROR HANDLING
+
+Implement the SDL diagnostic registry.
+
+Preserve existing error codes.
+
+Required foundation errors include:
+
+SDL-E100 through SDL-E103
+SDL-E200 through SDL-E205
+SDL-E210 through SDL-E213
+SDL-E220
+SDL-E300 through SDL-E303
+SDL-E400 through SDL-E408
+
+Required extended errors include:
+
+SDL-E501
+SDL-E601
+SDL-E602
+
+Warnings include:
+
+SDL-W100
+SDL-W101
+
+Every diagnostic MUST contain:
+
+phase
+severity
+code
+message
+location
+
+Diagnostics MUST be deterministic.
+
+Never hide validation failures.
+
+Never convert an error into a successful result without an explicitly defined recovery strategy.
+
+9. TESTING AND CONFORMANCE
+
+Use the existing SDL conformance fixtures.
+
+Execute:
+
+python tools/validate_0_2.py --cases fixtures/0.2/cases.yaml
+
+Preserve the reference validator as a conformance baseline.
+
+Do not claim production readiness solely because the reference validator passes.
+
+Create additional tests for every newly implemented feature.
+
+Every feature MUST have:
+
+Valid input tests.
+Invalid input tests.
+Boundary tests.
+Regression tests where applicable.
+
+Test the same SDL input multiple times and verify that Canonical IR and generated code remain identical.
+
+10. SECURITY AND RELIABILITY
+
+Implement safeguards against:
+
+Path traversal.
+External symlink access.
+Cyclic imports.
+Arbitrary YAML tags.
+Unexpected file access.
+Uncontrolled code execution.
+Untrusted proposal patches.
+Invalid runtime bindings.
+Resource exhaustion.
+Malformed expressions.
+
+Treat SDL specifications and LLM-generated proposals as untrusted input.
+
+Never execute generated source code during validation.
+
+Never apply an unapproved proposal.
+
+Never access files outside the permitted project root.
+
+11. DEVELOPMENT RULES
+
+You MUST work incrementally.
+
+For each implementation milestone:
+
+Explain the intended functionality.
+Implement the component.
+Add tests.
+Execute tests.
+Fix discovered errors.
+Document the result.
+Continue to the next milestone.
+
+Do not report functionality as implemented until its code and tests exist.
+
+Do not use pseudocode as a substitute for implementation.
+
+Do not leave critical components as TODOs.
+
+Do not silently skip tasks that are difficult or time-consuming.
+
+If a requirement cannot be implemented, explain exactly why and document the remaining work.
+
+Do not unnecessarily rewrite existing project components.
+
+12. DEFINITION OF DONE
+
+The SDL Development System is considered complete only when:
+
+SDL 0.2 parsing works.
+SDL 0.2 schema validation works.
+SDL 0.2 semantic validation works.
+Import and reference resolution works.
+Type-system validation works.
+Canonical IR generation works.
+IR generation is deterministic.
+SDL 0.3 flow semantics work.
+Interface compatibility works.
+Implementation and binding resolution work.
+Proposal validation works.
+Python code generation works.
+Runtime execution works.
+Generated applications pass their tests.
+Existing conformance tests pass.
+Documentation is complete.
+
+If any requirement remains incomplete, provide an explicit completion matrix.
+
+13. FINAL REPORT
+
+At the end of the implementation, produce:
+
+Executive summary.
+Implemented architecture.
+Final directory structure.
+Implemented components.
+SDL feature coverage matrix.
+Test execution results.
+Conformance results.
+Known limitations.
+Remaining work.
+Installation instructions.
+Example SDL project.
+Example generated Python application.
+Instructions for executing the complete toolchain.
+
+For each feature, report one of:
+
+IMPLEMENTED_AND_TESTED
+IMPLEMENTED_NOT_FULLY_TESTED
+PARTIALLY_IMPLEMENTED
+NOT_IMPLEMENTED
+BLOCKED
+
+Never report a partially implemented feature as complete.
+
+14. FINAL COMMAND
+
+Start by inspecting the existing repository and its contents.
+
+Then create the implementation plan and execute it.
+
+Work autonomously through all implementation phases.
+
+Do not stop after producing architecture documentation.
+
+Do not stop after generating YAML examples.
+
+Do not stop after implementing the parser.
+
+Your final objective is a functioning SDL development toolchain that can validate SDL specifications, generate Canonical IR, generate executable Python applications, and verify their correctness.
+
+Prioritize correctness, specification compliance, deterministic behavior, maintainability and production readiness over implementation speed.
+
+
+
+Kako da koristiš ovaj prompt
+
+    Prosledi agentu ovaj prompt.
+
+    Priloži mu kompletne SDL Core 0.2 i 1.0 specifikacije.
+
+    Daj mu pristup repository-ju u kojem treba da radi.
+
+    Omogući mu izvršavanje testova i rad sa fajlovima.
+
+    Traži da radi direktno na projektu, a ne da ti samo vraća kod u razgovoru.
+
+Jedna važna preporuka
+
+Nemoj zahtevati da agent odmah sve implementira u jednom prolazu. Prompt mu nalaže fazni razvoj, ali treba insistirati na tome da svaka faza bude završena i testirana pre sledeće.
+
+Posebno bih insistirao na tri stvari:
+
+    Validator pre code generatora: bez validnog SDL-a nema generisanja produkcijskog koda.
+
+    Canonical IR kao jedini izvor za codegen: nema direktnog prevođenja YAML-a u Python.
+
+    Conformance testovi: agent mora da dokaže da poštuje specifikaciju, a ne samo da demonstrira da njegov kod radi na jednom primeru.
+
+Tako dobijaš osnovu za pravi SDL compiler/toolchain, a ne samo AI agenta koji generiše programski kod.
+
+
+Napravio bih dva odvojena sistema:
+
+Sistem
+	
+
+Zadatak
+
+SDL Development Agent
+	
+
+Razume zahteve i projektuje aplikacije koristeći SDL
+
+SDL Compiler/Toolchain
+	
+
+Validira SDL i pretvara ga u izvršni program
+
+Oni rade zajedno, ali imaju različite odgovornosti.
+
+Najvažnija stvar: AI agent odlučuje šta treba napraviti, dok SDL toolchain kontroliše kako to mora biti napravljeno.
+
+Tako dobijaš sistem u kojem AI ima kreativnost, ali ne može proizvoljno da krši arhitekturu i pravila tvog jezika.
+
+
+****************************************************************************************
+
+opet ne razumem, ta dva odvojena sistema mogu da rade zajedno???mislim AI ne pise direktno kod, nego toolchain pise kod po ai instrukcijama, a ja opisem AI-u sta hocu??? ili???
+
+DA! Upravo tako! Sada si opisao arhitekturu koju bih ti preporučio. I ta dva sistema rade zajedno, kao jedan celovit sistem. Nisu dve odvojene aplikacije između kojih ti moraš ručno da prebacuješ podatke.
+
+Hajde da objasnim na konkretnom primeru.
+Kako bi tvoj sistem radio
+
+Ti komuniciraš samo sa AI agentom. Ne moraš da poznaješ SDL, Python ili programiranje.
+
+TI — Korisnik
+
+„Napravi mi aplikaciju za prodaju, kupce, proizvode i porudžbine.“
+Prvi sistem
+AI Development Agent
+
+AI razume šta želiš i projektuje aplikaciju.
+
+    Analizira zahtev.
+
+    Donosi arhitektonske odluke.
+
+    Kreira SDL specifikaciju.
+
+    Definiše module, klase, funkcije i interfejse.
+
+    Definiše poslovnu logiku i tokove.
+
+    Predaje SDL specifikaciju toolchain-u.
+
+SDL specifikacija
+Drugi sistem
+SDL Compiler / Toolchain
+
+Toolchain preuzima SDL i izvršava tehnički deo.
+
+    Validira SDL.
+
+    Pravi Canonical IR.
+
+    Proverava tipove i zavisnosti.
+
+    Generiše Python kod.
+
+    Kreira strukturu aplikacije.
+
+    Pokreće testove.
+
+    Prijavljuje greške.
+
+Gotova aplikacija
+
+Tvoja aplikacija
+
+Izvršni program, baza podataka, API, korisnički interfejs...
+A šta ako toolchain pronađe grešku?
+
+Tu je najvažniji deo saradnje.
+
+Recimo da AI napravi SDL specifikaciju koja ima nekompatibilan tip.
+
+    Toolchain odbija specifikaciju.
+
+    Vraća AI agentu preciznu grešku, na primer SDL-E403.
+
+    AI analizira grešku.
+
+    AI predlaže ispravku SDL specifikacije.
+
+    Toolchain ponovo validira.
+
+    Kada sve prođe, generiše program.
+
+Dakle, AI i toolchain rade u zatvorenoj povratnoj sprezi, bez tvog ručnog intervenisanja kod običnih grešaka.
+Ko šta radi?
+
+Aktivnost
+	
+
+AI
+	
+
+Toolchain
+
+Razumevanje tvojih zahteva
+	
+
+	
+
+Projektovanje aplikacije
+	
+
+	
+
+Pisanje SDL specifikacije
+	
+
+	
+
+Validacija SDL-a
+		
+
+Kreiranje Canonical IR
+		
+
+Generisanje programskog koda
+		
+
+Testiranje programa
+		
+
+Analiza grešaka i korekcije specifikacije
+	
+
+	
+
+Konačno odobrenje izmena
+	
+
+U saradnji sa tobom
+	
+Jedna veoma važna stvar
+
+AI ne treba da piše Python, Rust ili TypeScript kod za aplikaciju.
+
+Njegov izlaz treba da bude SDL specifikacija.
+
+Toolchain je taj koji prevodi SDL u programski kod.
+
+AI može da piše kod samog toolchain-a dok ga razvijamo, ali kada sistem bude završen, razvoj aplikacija ide preko SDL-a.
+Moj konačni predlog
+
+Napravićemo jedan sistem sa tri glavna dela:
+
+    AI Agent – razgovara sa tobom i pretvara tvoje zahteve u SDL.
+
+    SDL Toolchain – validira SDL i generiše izvršni kod.
+
+    Feedback Controller – povezuje ih, prenosi greške, zahteva korekcije i upravlja ponavljanjem procesa.
+
+Ti vidiš samo AI agenta. Sve ostalo se odvija u pozadini.
+
+Upravo ovakav sistem bih projektovao na osnovu SDL specifikacije koju si mi poslao. To je mnogo bliže ideji da napraviš sopstvenu platformu za razvoj softvera pomoću prirodnog jezika, nego običnom AI programeru.

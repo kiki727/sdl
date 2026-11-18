@@ -1,0 +1,40 @@
+sdl: "0.2"
+kind: module
+
+module:
+  id: tasks
+  mode: structural
+
+  imports:
+    - module: users
+    - package: sqlalchemy
+      version: ">=2.0.0 <3.0.0"
+
+  types:
+    - id: TaskId
+      type: UUID
+
+    - id: Status
+      enum:
+        - todo
+        - doing
+        - done
+
+  classes:
+    - id: Task
+      properties:
+        id: TaskId
+        title: String
+        status: Status
+        assignee: Optional<users::UserId>
+
+  functions:
+    - id: create_task
+      input:
+        title: String
+      output:
+        type: Task
+
+    - id: notify
+      output:
+        type: Result<Unit, String>

@@ -1,0 +1,16 @@
+sdl: "1.0"
+kind: implementation
+
+implementation:
+  id: greeter_rust
+  version: "1.0.0"
+  implements:
+    - interface: Greeter
+      version: "1.0.0"
+
+  # The build of the project is a Python build, so it cannot host an
+  # implementation that is written in another language.
+  language: rust
+  source:
+    file: "src/greeter.rs"
+    symbol: Greeter

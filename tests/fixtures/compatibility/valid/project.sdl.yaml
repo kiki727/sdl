@@ -1,0 +1,16 @@
+sdl: "1.0"
+kind: project
+
+project:
+  id: compatibility_valid
+  version: "1.0.0"
+
+  imports:
+    - path: "types.sdl.yaml"
+    - path: "interfaces.sdl.yaml"
+    - path: "implementations.sdl.yaml"
+
+  bindings:
+    - interface: PaymentProvider
+      version: "1.0.0"
+      implementation: good_provider

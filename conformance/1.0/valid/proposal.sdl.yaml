@@ -1,0 +1,14 @@
+sdl: "1.0"
+kind: proposal
+
+proposal:
+  id: prop_add_locale
+  target_version: "1.0.0"
+  author: "conformance"
+  rationale: "Add a locale parameter to the greeting."
+  patches:
+    - target: "interface.sdl.yaml:Greeter.methods[greet].inputs"
+      action: replace
+      value:
+        name: String
+        locale: String

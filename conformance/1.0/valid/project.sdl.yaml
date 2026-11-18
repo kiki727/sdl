@@ -1,0 +1,27 @@
+sdl: "1.0"
+kind: project
+
+project:
+  id: conformance_project
+  version: "1.0.0"
+
+  imports:
+    - path: "types.sdl.yaml"
+    - path: "interface.sdl.yaml"
+    - path: "implementation.sdl.yaml"
+
+  bindings:
+    - interface: Greeter
+      version: "1.0.0"
+      implementation: greeter_impl
+
+  backend:
+    target: python
+    mode: codegen
+
+  constraints:
+    forbidden_imports:
+      - from: conformance_project
+        deny:
+          - database_layer
+        reason: "Domain logic must not reach into the database."

@@ -1,0 +1,18 @@
+sdl: "1.0"
+kind: flow
+
+flow:
+  id: invalid_condition
+  version: "1.0.0"
+
+  inputs:
+    name: String
+
+  steps:
+    - id: build_greeting
+      call: greeter::greet
+      condition: "greeting.message =="
+      mapping:
+        name: name
+      output_map:
+        greeting: result

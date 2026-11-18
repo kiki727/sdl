@@ -1,0 +1,15 @@
+sdl: "0.2"
+kind: module
+
+module:
+  id: example
+
+  functions:
+    - id: bad
+      input:
+        value:
+          origin: unresolved
+          type: UUID
+          reason: "This must not carry a type."
+      output:
+        type: Unit

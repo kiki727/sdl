@@ -1,0 +1,17 @@
+sdl: "1.0"
+kind: module
+
+module:
+  id: helpers
+  types:
+    - id: LocalLabel
+      version: "1.0.0"
+      fields:
+        text: String
+  functions:
+    - id: label_it
+      version: "1.0.0"
+      input:
+        value: String
+      output:
+        type: LocalLabel

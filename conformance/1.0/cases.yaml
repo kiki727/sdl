@@ -1,0 +1,133 @@
+# SDL Core 1.0 conformance manifest.
+#
+# Run with:
+#     python -m sdl.cli.validate --cases conformance/1.0/cases.yaml
+#
+# A case with "valid: true" must produce no errors.
+# A case with "valid: false" must produce at least one diagnostic with the
+# given code, and the given phase when a phase is specified.
+
+cases:
+  # -- valid documents ------------------------------------------------------
+  - path: valid/types.sdl.yaml
+    valid: true
+  - path: valid/module.sdl.yaml
+    valid: true
+  - path: valid/interface.sdl.yaml
+    valid: true
+  - path: valid/implementation.sdl.yaml
+    valid: true
+  - path: valid/project.sdl.yaml
+    valid: true
+  - path: valid/flow.sdl.yaml
+    valid: true
+  - path: valid/proposal.sdl.yaml
+    valid: true
+
+  # -- envelope -------------------------------------------------------------
+  - path: invalid/envelope/unquoted-version.sdl.yaml
+    valid: false
+    code: SDL-E200
+    phase: schema
+  - path: invalid/envelope/legacy-envelope.sdl.yaml
+    valid: false
+    code: SDL-E200
+    phase: schema
+  - path: invalid/envelope/unknown-kind.sdl.yaml
+    valid: false
+    code: SDL-E201
+    phase: schema
+  - path: invalid/envelope/extra-root.sdl.yaml
+    valid: false
+    code: SDL-E202
+    phase: schema
+
+  # -- schema ---------------------------------------------------------------
+  - path: invalid/schema/unknown-field.sdl.yaml
+    valid: false
+    code: SDL-E203
+    phase: schema
+  - path: invalid/schema/missing-required.sdl.yaml
+    valid: false
+    code: SDL-E204
+    phase: schema
+  - path: invalid/schema/bad-id.sdl.yaml
+    valid: false
+    code: SDL-E210
+    phase: schema
+  - path: invalid/schema/unknown-enum-value.sdl.yaml
+    valid: false
+    code: SDL-E210
+    phase: schema
+
+  # -- YAML subset (layer 0) ------------------------------------------------
+  - path: invalid/yaml/duplicate-key.sdl.yaml
+    valid: false
+    code: SDL-E101
+    phase: syntax
+  - path: invalid/yaml/flow-style.sdl.yaml
+    valid: false
+    code: SDL-E102
+    phase: syntax
+
+  # -- scope ----------------------------------------------------------------
+  - path: invalid/types/duplicate-id.sdl.yaml
+    valid: false
+    code: SDL-E211
+    phase: semantic
+  - path: invalid/types/duplicate-module-type.sdl.yaml
+    valid: false
+    code: SDL-E211
+    phase: semantic
+  - path: invalid/types/shadowing/project.sdl.yaml
+    valid: false
+    code: SDL-E213
+    phase: semantic
+
+  # -- flows (spec sections 2 and 3) ----------------------------------------
+  - path: invalid/flow/missing-output-mapping.sdl.yaml
+    valid: false
+    code: SDL-E503
+    phase: semantic
+  - path: invalid/flow/unpopulated-output.sdl.yaml
+    valid: false
+    code: SDL-E503
+    phase: semantic
+  - path: invalid/flow/undefined-state.sdl.yaml
+    valid: false
+    code: SDL-E502
+    phase: semantic
+  - path: invalid/flow/invalid-condition.sdl.yaml
+    valid: false
+    code: SDL-E504
+    phase: semantic
+  - path: invalid/flow/retry-without-policy.sdl.yaml
+    valid: false
+    code: SDL-E505
+    phase: semantic
+  - path: invalid/flow/bad-error-strategy.sdl.yaml
+    valid: false
+    code: SDL-E506
+    phase: semantic
+  - path: invalid/flow/unknown-goto.sdl.yaml
+    valid: false
+    code: SDL-E507
+    phase: semantic
+
+  # -- bindings (spec section 6) --------------------------------------------
+  - path: invalid/binding/unknown-implementation.sdl.yaml
+    valid: false
+    code: SDL-E603
+    phase: semantic
+  - path: invalid/binding/unbound-interface/project.sdl.yaml
+    valid: false
+    code: SDL-E603
+    phase: semantic
+  - path: invalid/binding/foreign-language/project.sdl.yaml
+    valid: false
+    code: SDL-E606
+    phase: semantic
+  - path: invalid/binding/wrong-interface/project.sdl.yaml
+    valid: false
+    code: SDL-E604
+    phase: semantic

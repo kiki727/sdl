@@ -1,0 +1,10 @@
+sdl: "1.0"
+kind: types
+
+types:
+  Colour:
+    id: Colour
+    version: "1.0.0"
+    enum:
+      - red
+      - notValid

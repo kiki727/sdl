@@ -1,0 +1,6 @@
+sdl: "1.0"
+kind: types
+
+types:
+  Widget:
+    version: "1.0.0"

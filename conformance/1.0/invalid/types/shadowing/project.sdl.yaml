@@ -1,0 +1,12 @@
+sdl: "1.0"
+kind: project
+
+project:
+  id: shadowing_project
+  version: "1.0.0"
+  imports:
+    - path: "types.sdl.yaml"
+  types:
+    - id: Shared
+      version: "1.0.0"
+      fields: {}

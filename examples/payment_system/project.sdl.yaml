@@ -1,0 +1,31 @@
+sdl: "1.0"
+kind: project
+
+project:
+  id: payment_demo_system
+  version: "1.0.0"
+
+  imports:
+    - path: "types.sdl.yaml"
+    - path: "interfaces.sdl.yaml"
+    - path: "implementations.sdl.yaml"
+    - path: "payment_helper.sdl.yaml"
+    - path: "flow.sdl.yaml"
+
+  bindings:
+    - interface: PaymentProvider
+      version: "1.0.0"
+      implementation: stripe_provider_impl
+
+  backend:
+    target: python
+    mode: codegen
+    options:
+      strict_typing: true
+
+  constraints:
+    forbidden_imports:
+      - from: payment_demo_system
+        deny:
+          - legacy_payment_module
+        reason: "Must use the new SDL 1.0 PaymentProvider."

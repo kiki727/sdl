@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdl.dev/schema/0.2/sdl-0.2.schema.json",
+  "title": "SDL Core 0.2 document",
+  "description": "JSON Schema for SDL Core 0.2 documents. YAML subset rules (duplicate keys, anchors, tags, multi-document files) and path resolution must be enforced before JSON validation.",
+  "type": "object",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["sdl", "kind", "project"],
+      "additionalProperties": false,
+      "properties": {
+        "sdl": { "const": "0.2" },
+        "kind": { "const": "project" },
+        "project": { "$ref": "#/$defs/project" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["sdl", "kind", "module"],
+      "additionalProperties": false,
+      "properties": {
+        "sdl": { "const": "0.2" },
+        "kind": { "const": "module" },
+        "module": { "$ref": "#/$defs/module" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["sdl", "kind", "interface"],
+      "additionalProperties": false,
+      "properties": {
+        "sdl": { "const": "0.2" },
+        "kind": { "const": "interface" },
+        "interface": { "$ref": "#/$defs/interface" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["sdl", "kind", "types"],
+      "additionalProperties": false,
+      "properties": {
+        "sdl": { "const": "0.2" },
+        "kind": { "const": "types" },
+        "types": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/typeDeclaration" }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "snakeId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "pascalId": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9]*$"
+    },
+    "packageId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "versionRange": {
+      "type": "string",
+      "pattern": "^(\\^|~|>=|<=|>|<|=)?[0-9]+\\.[0-9]+\\.[0-9]+( (\\^|~|>=|<=|>|<|=)?[0-9]+\\.[0-9]+\\.[0-9]+)*$"
+    },
+    "typeExpression": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_:<>,|() ]+$",
+      "$comment": "This pattern rejects obviously invalid characters only. Arity, union flattening, generic arguments, and name resolution are checked by the semantic validator."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["structural", "declarative"]
+    },
+    "importPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\\\:*?\"<>|]+\\.sdl\\.yaml$",
+      "not": {
+        "pattern": "(^|/)\\.\\.(/|$)"
+      },
+      "allOf": [
+        { "not": { "pattern": "^/" } },
+        { "not": { "pattern": "^[A-Za-z]:" } }
+      ]
+    },
+    "projectImport": {
+      "type": "object",
+      "required": ["path"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "#/$defs/importPath" }
+      }
+    },
+    "moduleImport": {
+      "type": "object",
+      "required": ["module"],
+      "additionalProperties": false,
+      "properties": {
+        "module": { "$ref": "#/$defs/snakeId" }
+      }
+    },
+    "packageImport": {
+      "type": "object",
+      "required": ["package", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "package": { "$ref": "#/$defs/packageId" },
+        "version": { "$ref": "#/$defs/versionRange" }
+      }
+    },
+    "projectImports": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/projectImport" },
+      "uniqueItems": true
+    },
+    "moduleImports": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/moduleImport" },
+          { "$ref": "#/$defs/packageImport" }
+        ]
+      },
+      "uniqueItems": true
+    },
+    "aliasDeclaration": {
+      "type": "object",
+      "required": ["id", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/pascalId" },
+        "type": { "$ref": "#/$defs/typeExpression" }
+      }
+    },
+    "enumDeclaration": {
+      "type": "object",
+      "required": ["id", "enum"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/pascalId" },
+        "enum": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/snakeId" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "typeDeclaration": {
+      "oneOf": [
+        { "$ref": "#/$defs/aliasDeclaration" },
+        { "$ref": "#/$defs/enumDeclaration" }
+      ]
+    },
+    "inferredType": {
+      "type": "object",
+      "required": ["origin", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "origin": { "const": "inferred" },
+        "type": { "$ref": "#/$defs/typeExpression" },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "status": {
+          "type": "string",
+          "enum": ["proposed", "approved"]
+        }
+      }
+    },
+    "unresolvedType": {
+      "type": "object",
+      "required": ["origin", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "origin": { "const": "unresolved" },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "typeOrInference": {
+      "oneOf": [
+        { "$ref": "#/$defs/typeExpression" },
+        { "$ref": "#/$defs/inferredType" },
+        { "$ref": "#/$defs/unresolvedType" }
+      ]
+    },
+    "propertyMap": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/snakeId" },
+      "additionalProperties": { "$ref": "#/$defs/typeOrInference" }
+    },
+    "output": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "$ref": "#/$defs/typeExpression" }
+      }
+    },
+    "classDeclaration": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/pascalId" },
+        "properties": { "$ref": "#/$defs/propertyMap" }
+      }
+    },
+    "functionDeclaration": {
+      "type": "object",
+      "required": ["id", "output"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/snakeId" },
+        "input": { "$ref": "#/$defs/propertyMap" },
+        "output": { "$ref": "#/$defs/output" }
+      }
+    },
+    "methodDeclaration": {
+      "type": "object",
+      "required": ["id", "output"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/snakeId" },
+        "input": { "$ref": "#/$defs/propertyMap" },
+        "output": { "$ref": "#/$defs/output" }
+      }
+    },
+    "interface": {
+      "type": "object",
+      "required": ["id", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/pascalId" },
+        "version": { "$ref": "#/$defs/version" },
+        "methods": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/methodDeclaration" }
+        }
+      }
+    },
+    "interfaceReference": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "module": {
+          "oneOf": [
+            { "const": "project" },
+            { "$ref": "#/$defs/snakeId" }
+          ]
+        },
+        "id": { "$ref": "#/$defs/pascalId" },
+        "version": { "$ref": "#/$defs/versionRange" }
+      }
+    },
+    "project": {
+      "type": "object",
+      "required": ["id", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/snakeId" },
+        "version": { "$ref": "#/$defs/version" },
+        "mode": { "$ref": "#/$defs/mode" },
+        "imports": { "$ref": "#/$defs/projectImports" },
+        "types": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/typeDeclaration" }
+        },
+        "interfaces": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/interface" }
+        }
+      }
+    },
+    "module": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/snakeId" },
+        "mode": { "$ref": "#/$defs/mode" },
+        "imports": { "$ref": "#/$defs/moduleImports" },
+        "types": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/typeDeclaration" }
+        },
+        "interfaces": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/interface" }
+        },
+        "classes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/classDeclaration" }
+        },
+        "functions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/functionDeclaration" }
+        }
+      }
+    }
+  }
+}

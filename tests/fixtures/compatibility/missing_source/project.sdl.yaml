@@ -1,0 +1,11 @@
+sdl: "1.0"
+kind: project
+
+project:
+  id: compatibility_missing_source
+  version: "1.0.0"
+
+  imports:
+    - path: "types.sdl.yaml"
+    - path: "interfaces.sdl.yaml"
+    - path: "implementation.sdl.yaml"

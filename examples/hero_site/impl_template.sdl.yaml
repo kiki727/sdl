@@ -1,0 +1,14 @@
+sdl: "1.0"
+kind: implementation
+
+implementation:
+  id: express_handlebars_engine
+  version: "1.0.0"
+  implements:
+    - interface: TemplateEngine
+      version: "1.0.0"
+  
+  language: typescript
+  source:
+    file: src/render/handlebars.ts
+    symbol: HandlebarsEngine

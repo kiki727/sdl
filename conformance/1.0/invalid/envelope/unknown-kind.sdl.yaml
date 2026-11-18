@@ -1,0 +1,5 @@
+sdl: "1.0"
+kind: widget
+
+widget:
+  id: Widget

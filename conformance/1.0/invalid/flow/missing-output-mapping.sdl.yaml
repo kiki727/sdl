@@ -1,0 +1,20 @@
+sdl: "1.0"
+kind: flow
+
+flow:
+  id: no_output_mapping
+  version: "1.0.0"
+
+  inputs:
+    name: String
+
+  steps:
+    - id: build_greeting
+      call: greeter::greet
+      mapping:
+        name: name
+      output_map:
+        greeting: result
+
+  outputs:
+    message: String

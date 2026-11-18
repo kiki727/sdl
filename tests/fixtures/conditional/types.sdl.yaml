@@ -1,0 +1,10 @@
+sdl: "1.0"
+kind: types
+
+types:
+  Check:
+    id: Check
+    version: "1.0.0"
+    fields:
+      is_valid: Boolean
+      token: String

@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdl.dev/schema/0.2/sdl-0.2.validation.schema.json",
+  "title": "SDL Core 0.2 validation report",
+  "description": "Shape of the validation report emitted by an SDL 0.2 validator. This is tool output, not an SDL document.",
+  "type": "object",
+  "required": ["validation"],
+  "additionalProperties": false,
+  "properties": {
+    "validation": { "$ref": "#/$defs/validationReport" }
+  },
+  "$defs": {
+    "validationReport": {
+      "type": "object",
+      "required": ["status", "diagnostics"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["passed", "failed"]
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/diagnostic" }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "failed" } },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "diagnostics": {
+                "contains": {
+                  "properties": { "severity": { "const": "error" } },
+                  "required": ["severity"]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "status": { "const": "passed" } },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "diagnostics": {
+                "not": {
+                  "contains": {
+                    "properties": { "severity": { "const": "error" } },
+                    "required": ["severity"]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "diagnostic": {
+      "type": "object",
+      "required": ["phase", "severity", "code", "message", "location"],
+      "additionalProperties": false,
+      "properties": {
+        "phase": {
+          "type": "string",
+          "enum": ["syntax", "schema", "semantic"]
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["error", "warning", "info"]
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^SDL-[EW][0-9]{3}$"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "location": { "$ref": "#/$defs/location" }
+      }
+    },
+    "location": {
+      "type": "object",
+      "required": ["file", "path", "line", "column"],
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^($|/.*)$"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

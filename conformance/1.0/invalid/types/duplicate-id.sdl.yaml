@@ -1,0 +1,13 @@
+sdl: "1.0"
+kind: project
+
+project:
+  id: duplicate_project
+  version: "1.0.0"
+  types:
+    - id: Widget
+      version: "1.0.0"
+      fields: {}
+    - id: Widget
+      version: "1.0.0"
+      fields: {}

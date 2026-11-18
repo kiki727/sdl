@@ -1,0 +1,19 @@
+sdl: "1.0"
+kind: interface
+
+interface:
+  id: PaymentProvider
+  version: "1.0.0"
+  imports:
+    - path: "types.sdl.yaml"
+  
+  invariants:
+    - "amount > 0"
+
+  methods:
+    - id: charge
+      version: "1.0.0"
+      inputs:
+        request: PaymentRequest
+      outputs:
+        type: PaymentResponse

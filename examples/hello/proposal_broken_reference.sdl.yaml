@@ -1,0 +1,13 @@
+sdl: "1.0"
+kind: proposal
+
+proposal:
+  id: prop_call_something_that_does_not_exist
+  target_version: "1.0.0"
+  author: "demo"
+  rationale: "A demonstration of a proposal that breaks a reference."
+
+  patches:
+    - target: "flow.sdl.yaml:steps[greet].call"
+      action: replace
+      value: Missing::Nothing

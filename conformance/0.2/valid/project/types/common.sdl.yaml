@@ -1,0 +1,12 @@
+sdl: "0.2"
+kind: types
+
+types:
+  - id: Email
+    type: String
+
+  - id: Priority
+    enum:
+      - low
+      - normal
+      - high

@@ -1,0 +1,149 @@
+version: "0.2"
+description: "SDL Core 0.2 conformance cases. Paths are relative to this file. A valid case must pass schema and semantic validation. An invalid case must be rejected with the listed code."
+
+cases:
+  - path: valid/project/sdl.yaml
+    valid: true
+
+  - path: valid/inference.sdl.yaml
+    valid: true
+
+  - path: invalid/yaml/duplicate-key.sdl.yaml
+    valid: false
+    phase: syntax
+    code: SDL-E101
+
+  - path: invalid/envelope/unquoted-version.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E200
+
+  - path: invalid/envelope/unknown-kind.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E201
+
+  - path: invalid/envelope/missing-root.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E202
+
+  - path: invalid/envelope/extra-root.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E202
+
+  - path: invalid/schema/unknown-field.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E203
+
+  - path: invalid/schema/unknown-nested-field.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E203
+
+  - path: invalid/functions/missing-output.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E204
+
+  - path: invalid/imports/package-without-version.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E204
+
+  - path: invalid/types/inferred-without-type.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E204
+
+  - path: invalid/functions/scalar-output.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E205
+
+  - path: invalid/types/bad-confidence.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E205
+
+  - path: invalid/ids/bad-class-id.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E210
+
+  - path: invalid/ids/duplicate-type-id.sdl.yaml
+    valid: false
+    phase: semantic
+    code: SDL-E211
+
+  - path: invalid/interfaces/duplicate-method.sdl.yaml
+    valid: false
+    phase: semantic
+    code: SDL-E211
+
+  - path: invalid/versions/short-version.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E220
+
+  - path: invalid/imports/legacy-modules.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E203
+
+  - path: invalid/imports/path-traversal.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E300
+
+  - path: invalid/imports/wrong-extension.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E300
+
+  - path: invalid/imports/self-import.sdl.yaml
+    valid: false
+    phase: semantic
+    code: SDL-E301
+
+  - path: invalid/types/alias-cycle.sdl.yaml
+    valid: false
+    phase: semantic
+    code: SDL-E402
+
+  - path: invalid/types/unknown-type.sdl.yaml
+    valid: false
+    phase: semantic
+    code: SDL-E401
+
+  - path: invalid/types/dotted-reference.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E400
+
+  - path: invalid/types/unit-input.sdl.yaml
+    valid: false
+    phase: semantic
+    code: SDL-E405
+
+  - path: invalid/types/list-arity.sdl.yaml
+    valid: false
+    phase: semantic
+    code: SDL-E406
+
+  - path: invalid/types/unresolved-with-type.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E407
+
+  - path: invalid/types/alias-and-enum.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E408
+
+  - path: invalid/types/empty-enum.sdl.yaml
+    valid: false
+    phase: schema
+    code: SDL-E408

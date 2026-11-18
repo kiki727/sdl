@@ -1,0 +1,10 @@
+sdl: "0.2"
+kind: module
+
+module:
+  id: example
+
+  classes:
+    - id: Bad
+      properties:
+        value: tasks.Task

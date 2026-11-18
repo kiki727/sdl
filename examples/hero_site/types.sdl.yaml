@@ -1,0 +1,19 @@
+sdl: "1.0"
+kind: types
+
+types:
+  HeroContent:
+    id: HeroContent
+    version: "1.0.0"
+    fields:
+      title: String
+      subtitle: String
+      image_url: String
+      cta_text: String
+
+  PageResponse:
+    id: PageResponse
+    version: "1.0.0"
+    fields:
+      html: String
+      status_code: Int

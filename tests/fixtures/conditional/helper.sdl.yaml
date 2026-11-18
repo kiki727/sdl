@@ -1,0 +1,12 @@
+sdl: "1.0"
+kind: module
+
+module:
+  id: helper
+  functions:
+    - id: describe
+      version: "1.0.0"
+      input:
+        value: String
+      output:
+        type: String

@@ -1,0 +1,15 @@
+sdl: "1.0"
+kind: project
+
+project:
+  id: unbound_project
+  version: "1.0.0"
+
+  imports:
+    - path: "interface.sdl.yaml"
+    - path: "flow.sdl.yaml"
+
+  # The flow calls the interface Greeter, but the project binds no
+  # implementation for it. Specification section 6.2, rule three: a call is
+  # resolved through the bindings table, so a call without a binding cannot
+  # be resolved at all.

@@ -1,0 +1,15 @@
+sdl: "1.0"
+kind: interface
+
+interface:
+  id: ContentProvider
+  version: "1.0.0"
+  imports:
+    - path: "types.sdl.yaml"
+  
+  methods:
+    - id: get_hero_content
+      version: "1.0.0"
+      inputs: {}
+      outputs:
+        type: HeroContent

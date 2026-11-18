@@ -1,0 +1,15 @@
+sdl: "1.0"
+kind: interface
+
+interface:
+  id: Greeter
+  version: "1.0.0"
+  invariants:
+    - "message != null"
+  methods:
+    - id: greet
+      version: "1.0.0"
+      inputs:
+        name: String
+      outputs:
+        type: Greeting

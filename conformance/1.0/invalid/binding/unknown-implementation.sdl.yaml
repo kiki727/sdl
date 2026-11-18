@@ -1,0 +1,12 @@
+sdl: "1.0"
+kind: project
+
+project:
+  id: binding_project
+  version: "1.0.0"
+  imports:
+    - path: "interface.sdl.yaml"
+  bindings:
+    - interface: Greeter
+      version: "1.0.0"
+      implementation: missing_impl

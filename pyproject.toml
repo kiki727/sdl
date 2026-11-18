@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sdl"
+dynamic = ["version"]
+description = "SDL — Specification Description Language: a semantic architecture governance toolchain"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+dependencies = [
+    "PyYAML>=6.0",
+    "jsonschema>=4.18",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+]
+
+[project.scripts]
+sdl = "sdl.cli.__main__:main"
+
+[tool.setuptools]
+packages = [
+    "sdl",
+    "sdl.backends",
+    "sdl.backends.codegen",
+    "sdl.backends.runtime",
+    "sdl.cli",
+    "sdl.flow",
+    "sdl.ir",
+    "sdl.lowering",
+    "sdl.parser",
+    "sdl.proposal",
+    "sdl.schema",
+    "sdl.semantics",
+    "sdl.types",
+    "sdl.validation",
+    "sdl.yaml",
+]
+
+[tool.setuptools.package-data]
+sdl = ["schema/*.json"]
+
+[tool.setuptools.dynamic]
+version = { file = "VERSION" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

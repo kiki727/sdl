@@ -1,0 +1,17 @@
+sdl: "1.0"
+kind: flow
+
+flow:
+  id: broken_call_flow
+  version: "1.0.0"
+
+  inputs:
+    name: String
+
+  steps:
+    - id: call_something
+      call: missing_module::missing_method
+      mapping:
+        name: name
+      output_map:
+        result_value: result

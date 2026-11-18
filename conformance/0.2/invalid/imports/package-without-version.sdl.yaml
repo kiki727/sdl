@@ -1,0 +1,8 @@
+sdl: "0.2"
+kind: module
+
+module:
+  id: example
+
+  imports:
+    - package: sqlalchemy

@@ -1,0 +1,14 @@
+sdl: "0.2"
+kind: module
+
+module:
+  id: example
+
+  functions:
+    - id: bad
+      input:
+        value:
+          origin: inferred
+          confidence: 0.5
+      output:
+        type: String

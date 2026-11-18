@@ -1,0 +1,33 @@
+sdl: "1.0"
+kind: flow
+
+flow:
+  id: render_hero_page
+  version: "1.0.0"
+  imports:
+    - path: "interface_content.sdl.yaml"
+    - path: "interface_template.sdl.yaml"
+    - path: "types.sdl.yaml"
+
+  inputs:
+    request_path: String
+
+  steps:
+    - id: fetch_content
+      call: ContentProvider::get_hero_content
+      mapping: {}
+      output_map:
+        hero_data: result
+
+    - id: generate_html
+      call: TemplateEngine::render_hero
+      mapping:
+        content: hero_data
+      output_map:
+        page_html: result
+
+  outputs:
+    html: String
+
+  output_mapping:
+    html: page_html

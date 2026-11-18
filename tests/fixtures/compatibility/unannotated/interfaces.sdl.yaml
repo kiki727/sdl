@@ -1,0 +1,16 @@
+sdl: "1.0"
+kind: interface
+
+interface:
+  id: PaymentProvider
+  version: "1.0.0"
+  imports:
+    - path: "types.sdl.yaml"
+
+  methods:
+    - id: charge
+      version: "1.0.0"
+      inputs:
+        amount: Decimal
+      outputs:
+        type: PaymentResponse

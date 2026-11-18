@@ -1,0 +1,21 @@
+sdl: "1.0"
+kind: project
+
+project:
+  id: conditional_project
+  version: "1.0.0"
+
+  imports:
+    - path: "types.sdl.yaml"
+    - path: "interfaces.sdl.yaml"
+    - path: "implementations.sdl.yaml"
+    - path: "flow.sdl.yaml"
+    - path: "helper.sdl.yaml"
+
+  bindings:
+    - interface: Checker
+      version: "1.0.0"
+      implementation: checker_impl
+
+  policy:
+    forbidden_id_changes: true

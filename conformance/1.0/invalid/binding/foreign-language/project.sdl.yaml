@@ -1,0 +1,21 @@
+sdl: "1.0"
+kind: project
+
+project:
+  id: foreign_language_project
+  version: "1.0.0"
+
+  imports:
+    - path: "interface.sdl.yaml"
+    - path: "implementation.sdl.yaml"
+
+  bindings:
+    - interface: Greeter
+      version: "1.0.0"
+      implementation: greeter_rust
+
+  # Specification section 7.2: the target must be compatible with the
+  # languages of all the implementations the build uses.
+  backend:
+    target: python
+    mode: codegen

@@ -1,0 +1,15 @@
+sdl: "0.2"
+kind: interface
+
+interface:
+  id: BadService
+  version: "1.0.0"
+
+  methods:
+    - id: ping
+      output:
+        type: String
+
+    - id: ping
+      output:
+        type: String
