@@ -12,7 +12,7 @@ This runs, in order:
 2. the Core 1.0 conformance suite — 31 cases
 3. the proposal protocol self-check — 18 checks
 4. the package structure check — 6 checks
-5. the pipeline integration test — 19 checks
+5. the pipeline integration test — 22 checks
 6. the code generation test — 28 checks
 7. the SDL runtime test — 10 checks
 8. the assignability test — 17 checks

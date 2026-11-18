@@ -19,6 +19,7 @@ import yaml
 
 from sdl.parser.ast import ASTNode
 from sdl.parser.yaml_parser import SDLYamlParser, SDLParserError
+from sdl.yaml.comments import restore_comments
 from sdl.yaml.subset import parse_file
 
 #: A string that looks like a version has to stay double quoted. The envelope
@@ -82,14 +83,21 @@ class SourceDocument:
         )
 
     def render(self) -> str:
-        """The document as YAML text."""
-        return yaml.dump(
+        """The document as YAML text.
+
+        The data carries no comments, so the comments of the original text
+        are read out of it and put back beside the nodes they annotate. A
+        comment whose node survived a change is preserved; a comment whose
+        node is gone is dropped. See :mod:`sdl.yaml.comments`.
+        """
+        rendered = yaml.dump(
             self.data,
             Dumper=SDLDumper,
             sort_keys=False,
             allow_unicode=True,
             default_flow_style=False,
         )
+        return restore_comments(self.text, rendered)
 
 
 @dataclass

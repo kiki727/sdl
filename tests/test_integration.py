@@ -435,6 +435,152 @@ def test_a_failed_merge_rolls_back_every_document() -> None:
         assert _snapshot(entry.parent) == before, "the documents were modified"
 
 
+# ---------------------------------------------------------------------------
+# The comments survive a merge
+# ---------------------------------------------------------------------------
+
+
+def test_the_comments_of_a_merged_document_are_kept() -> None:
+    """A merge re-serialises a document but does not throw its comments away.
+
+    The data of a document carries no comments, so a merged document used to
+    lose every comment a human had written. The comments are now read out of
+    the original text and put back beside the nodes they annotate
+    (``sdl/yaml/comments.py``).
+    """
+    from sdl.proposal.engine import ProposalEngine
+
+    with project_copy() as entry:
+        flow = entry.parent / "flow.sdl.yaml"
+        text = flow.read_text(encoding="utf-8")
+        text = text.replace("flow:\n", "# The flow a customer runs.\nflow:\n", 1)
+        text = text.replace(
+            'version: "1.0.0"\n',
+            'version: "1.0.0"  # bumped by hand\n',
+            1,
+        )
+        flow.write_text(text, encoding="utf-8")
+
+        result = ProposalEngine(entry).process_proposal(
+            _proposal([("flow.sdl.yaml:version", "1.1.0")], approve=True)
+        )
+
+        assert result.accepted, f"the proposal was rejected: {result.message}"
+        assert result.merged, "the proposal was not merged"
+
+        merged = flow.read_text(encoding="utf-8")
+        assert "# The flow a customer runs." in merged, merged
+        assert "# bumped by hand" in merged, merged
+        assert 'version: "1.1.0"' in merged, merged
+
+
+def test_a_comment_is_attached_to_the_node_it_annotates() -> None:
+    """A comment follows its node; a comment on a removed node is dropped.
+
+    A ``#`` inside a quoted scalar or a literal block scalar is not a comment
+    and must be left alone.
+    """
+    from sdl.yaml.comments import restore_comments
+
+    original = (
+        "sdl: \"1.0\"\n"
+        "kind: types\n"
+        "types:\n"
+        "  Greeting:\n"
+        "    # The fields of the greeting.\n"
+        "    fields:\n"
+        "      message: String  # the greeting itself\n"
+        "      removed: String\n"
+        "      quoted: \"a # not a comment\"\n"
+        "    note: |\n"
+        "      # not a comment either\n"
+    )
+
+    # The proposal removes ``removed`` and keeps everything else.
+    data = {
+        "sdl": "1.0",
+        "kind": "types",
+        "types": {
+            "Greeting": {
+                "fields": {
+                    "message": "String",
+                    "quoted": "a # not a comment",
+                },
+                "note": "# not a comment either\n",
+            }
+        },
+    }
+
+    restored = restore_comments(original, _render(data))
+
+    assert "# The fields of the greeting." in restored, restored
+    assert "# the greeting itself" in restored, restored
+    assert "a # not a comment" in restored, restored
+    # The ``#`` of the block scalar is part of the value, not a comment: it
+    # must appear once, not twice.
+    assert restored.count("# not a comment either") == 1, restored
+
+
+def test_a_comment_follows_an_item_by_its_id() -> None:
+    """Removing one item does not move a comment to its neighbour.
+
+    A list of components is addressed by ``id``, not by position, so a comment
+    stays with the component it annotates when another component is removed,
+    and the comment of the removed component is dropped.
+    """
+    from sdl.yaml.comments import restore_comments
+
+    original = (
+        "sdl: \"1.0\"\n"
+        "kind: flow\n"
+        "flow:\n"
+        "  id: demo\n"
+        "  steps:\n"
+        "    - id: create_request\n"
+        "      # build the request first\n"
+        "      call: helper::build\n"
+        "    - id: execute_payment\n"
+        "      call: PaymentProvider::charge  # the charge\n"
+        "    - id: notify\n"
+        "      call: Notifier::send\n"
+    )
+
+    data = {
+        "sdl": "1.0",
+        "kind": "flow",
+        "flow": {
+            "id": "demo",
+            "steps": [
+                {"id": "execute_payment", "call": "PaymentProvider::charge"},
+                {"id": "notify", "call": "Notifier::send"},
+            ],
+        },
+    }
+
+    restored = restore_comments(original, _render(data))
+    lines = restored.splitlines()
+    charge = next(line for line in lines if "charge" in line)
+
+    assert "# the charge" in charge, restored
+    assert "build the request first" not in restored, restored
+    assert "#" not in next(line for line in lines if "Notifier::send" in line), restored
+
+
+def _render(data) -> str:
+    """Serialise document data the way the merge does, before comments."""
+    import yaml
+
+    from sdl.documents import SDLDumper
+
+    return yaml.dump(
+        data,
+        Dumper=SDLDumper,
+        sort_keys=False,
+        allow_unicode=True,
+        default_flow_style=False,
+    )
+
+
 CHECKS = [
     test_payment_system_compiles,
     test_hero_site_compiles,
@@ -455,6 +601,9 @@ CHECKS = [
     test_a_valid_proposal_is_not_merged_without_approval,
     test_an_approved_proposal_is_merged_and_stays_valid,
     test_a_failed_merge_rolls_back_every_document,
+    test_the_comments_of_a_merged_document_are_kept,
+    test_a_comment_is_attached_to_the_node_it_annotates,
+    test_a_comment_follows_an_item_by_its_id,
 ]
 
 

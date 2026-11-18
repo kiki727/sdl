@@ -48,7 +48,7 @@ python tests/run_all.py
 | Core 1.0 conformance | 31/31 |
 | Proposal protocol self-check | 18/18 |
 | Package structure | 6/6 |
-| Pipeline integration | 19/19 |
+| Pipeline integration | 22/22 |
 | Code generation | 28/28 |
 | SDL runtime | 10/10 |
 | Assignability | 17/17 |
@@ -155,6 +155,11 @@ PROPOSAL
 * the merge writes the changed documents back and increments the project
   version according to semver. A proposal that changes nothing does not move
   the version
+* the merge keeps the **comments** of the documents it rewrites. The data of a
+  document carries no comments, so a comment is read out of the original text
+  and put back beside the node it annotates (`sdl/yaml/comments.py`). The
+  layout — blank lines, quoting, indentation — is normalised, because the
+  document is re-serialised
 
 A patch names an element of the specification:
 
