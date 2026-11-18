@@ -134,6 +134,11 @@ must not assume they are enforced until the corresponding status row in
   it. A proposal that breaks a type, a reference, a binding or a layering
   prohibition is rejected with `SDL-E501`, `SDL-E502`, `SDL-E511`, `SDL-E603`
   or `SDL-E601`.
+* The type-expression rules of Core 0.2 apply to every shape of a 1.0 document:
+  a `Unit` in a position that forbids it is `SDL-E405`, and a generic with the
+  wrong number of arguments or a `Map` key that is not `String`, `Int` or
+  `UUID` is `SDL-E406`. An invariant that is not an expression is `SDL-E504`.
+  A binding whose version is not the one the interface declares is `SDL-E603`.
 * The signature of a Python implementation is checked against the interface it
   declares. A signature the validator cannot read is `SDL-E607`, never a
   silent pass.

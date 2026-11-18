@@ -118,6 +118,8 @@ class ProjectContext:
         self._check_shadowing()
         self._check_alias_cycles()
         self._check_class_recursion()
+        self._check_type_expressions()
+        self._check_invariants()
         self._check_flows()
         self._check_bindings()
         self._check_call_bindings()
@@ -615,6 +617,250 @@ class ProjectContext:
             if state.get(symbol, 0) == 0:
                 visit(symbol)
 
+    # -- type expressions (inherited from Core 0.2) -------------------------
+
+    def _check_type_expressions(self) -> None:
+        """Every type expression must obey the rules of Core 0.2.
+
+        Core 1.0 inherits generic arity, the ``Map`` key rule and the
+        restrictions on ``Unit`` (Core 0.2 section 6). The 1.0 documents are
+        written in a shape of their own -- a ``types`` document is a mapping
+        and a type may carry ``fields`` -- so the rules are applied to every
+        position a type expression can appear, not only to the list form that
+        Core 0.2 used.
+        """
+        for symbol in self._all_symbols():
+            if symbol.kind == "alias" and symbol.expr is not None:
+                self._check_type_expression(
+                    symbol.expr, symbol.doc, symbol.parts + ["type"], "alias"
+                )
+            elif symbol.kind == "compound":
+                for field_name, expression in symbol.fields.items():
+                    self._check_type_expression(
+                        expression,
+                        symbol.doc,
+                        symbol.parts + ["fields", field_name],
+                        "property",
+                    )
+            elif symbol.kind == "interface":
+                for index, method in enumerate(symbol.methods):
+                    self._check_method_types(
+                        symbol.doc, method, symbol.parts + ["methods", index]
+                    )
+
+        for doc in self.documents.values():
+            root = doc.root_value
+            if doc.kind == "flow" and isinstance(root, dict):
+                self._check_flow_types(doc, root)
+
+    def _check_flow_types(self, doc: Document, root: dict[str, Any]) -> None:
+        inputs = root.get("inputs")
+        if isinstance(inputs, dict):
+            for name, value in inputs.items():
+                self._check_expression_value(
+                    doc, value, ["flow", "inputs", name], "input"
+                )
+        outputs = root.get("outputs")
+        if isinstance(outputs, dict):
+            for name, value in outputs.items():
+                self._check_expression_value(
+                    doc, value, ["flow", "outputs", name], "output"
+                )
+
+    def _check_method_types(
+        self, doc: Document, method: dict[str, Any], parts: list[Any]
+    ) -> None:
+        for key in ("input", "inputs"):
+            value = method.get(key)
+            if isinstance(value, dict):
+                for name, item in value.items():
+                    self._check_expression_value(
+                        doc, item, parts + [key, name], "input"
+                    )
+        for key in ("output", "outputs"):
+            value = method.get(key)
+            if isinstance(value, dict):
+                self._check_expression_value(
+                    doc, value.get("type"), parts + [key, "type"], "output"
+                )
+
+    def _check_expression_value(
+        self, doc: Document, value: Any, parts: list[Any], context: str
+    ) -> None:
+        if not isinstance(value, str):
+            return
+        try:
+            expression = sdl_types.parse(value)
+        except sdl_types.TypeSyntaxError:
+            return
+        self._check_type_expression(expression, doc, parts, context)
+
+    def _check_type_expression(
+        self,
+        expression: sdl_types.TypeExpr,
+        doc: Document,
+        parts: list[Any],
+        context: str,
+    ) -> None:
+        if isinstance(expression, sdl_types.TypeUnion):
+            child = "unit_forbidden" if context in ("output", "result_ok") else context
+            for item in expression.items:
+                self._check_type_expression(item, doc, parts, child)
+            return
+
+        if isinstance(expression, sdl_types.TypeGeneric):
+            name = expression.name
+            if name in sdl_types.GENERIC_ARITY:
+                expected = sdl_types.GENERIC_ARITY[name]
+                if len(expression.args) != expected:
+                    self._diag(
+                        doc,
+                        "semantic",
+                        "error",
+                        "SDL-E406",
+                        f"{name} expects {expected} type argument(s), got "
+                        f"{len(expression.args)}.",
+                        parts,
+                    )
+                if name == "Map":
+                    if expression.args:
+                        self._check_type_expression(
+                            expression.args[0], doc, parts, "map_key"
+                        )
+                    if len(expression.args) > 1:
+                        value_context = "alias" if context == "alias" else "unit_forbidden"
+                        self._check_type_expression(
+                            expression.args[1], doc, parts, value_context
+                        )
+                elif name == "Result":
+                    if expression.args:
+                        ok_context = "alias" if context == "alias" else "result_ok"
+                        self._check_type_expression(
+                            expression.args[0], doc, parts, ok_context
+                        )
+                    if len(expression.args) > 1:
+                        err_context = "alias" if context == "alias" else "unit_forbidden"
+                        self._check_type_expression(
+                            expression.args[1], doc, parts, err_context
+                        )
+                else:
+                    arg_context = "alias" if context == "alias" else "unit_forbidden"
+                    for argument in expression.args:
+                        self._check_type_expression(argument, doc, parts, arg_context)
+                return
+
+            # A name used as a generic is not a type of Core 0.2.
+            for argument in expression.args:
+                self._check_type_expression(argument, doc, parts, "unit_forbidden")
+            return
+
+        name = expression.name
+        if context == "map_key":
+            self._check_map_key(name, doc, parts)
+            return
+        if name in sdl_types.SIMPLE_BUILTINS:
+            if name == "Unit" and context not in ("output", "result_ok"):
+                self._diag(
+                    doc,
+                    "semantic",
+                    "error",
+                    "SDL-E405",
+                    "Unit is only allowed as output or as Result<Unit, E>.",
+                    parts,
+                )
+            return
+        if name in sdl_types.GENERIC_ARITY:
+            self._diag(
+                doc,
+                "semantic",
+                "error",
+                "SDL-E406",
+                f"{name} requires type arguments.",
+                parts,
+            )
+            return
+
+    def _check_map_key(self, name: str, doc: Document, parts: list[Any]) -> None:
+        if name in ("String", "Int", "UUID"):
+            return
+        if name == "Unit":
+            self._diag(
+                doc,
+                "semantic",
+                "error",
+                "SDL-E405",
+                "Unit is not allowed as a map key.",
+                parts,
+            )
+            return
+        if name in sdl_types.SIMPLE_BUILTINS or name in sdl_types.GENERIC_ARITY:
+            self._diag(
+                doc,
+                "semantic",
+                "error",
+                "SDL-E406",
+                "Map key must be String, Int or UUID.",
+                parts,
+            )
+            return
+        symbol, _ = self._resolve(name)
+        if self._alias_builtin(symbol) not in ("String", "Int", "UUID"):
+            self._diag(
+                doc,
+                "semantic",
+                "error",
+                "SDL-E406",
+                "Map key must be String, Int or UUID.",
+                parts,
+            )
+
+    def _alias_builtin(
+        self, symbol: Symbol | None, seen: set[Symbol] | None = None
+    ) -> str | None:
+        """The builtin a chain of aliases ends in, when there is one."""
+        if symbol is None or symbol.kind != "alias" or symbol.expr is None:
+            return None
+        if not isinstance(symbol.expr, sdl_types.TypeName):
+            return None
+        seen = seen if seen is not None else set()
+        if symbol in seen:
+            return None
+        seen.add(symbol)
+        name = symbol.expr.name
+        if name in sdl_types.SIMPLE_BUILTINS:
+            return name
+        target, _ = self._resolve(name, symbol.scope)
+        return self._alias_builtin(target, seen)
+
+    # -- invariants (spec section 4.2.1) ------------------------------------
+
+    def _check_invariants(self) -> None:
+        """An invariant is a logical expression of the grammar of section 3.2.
+
+        Specification section 4.2.1: the 1.0 validator checks that invariants
+        are syntactically correct and use available fields.
+        """
+        for symbol in self._all_symbols():
+            if symbol.kind != "interface" or not isinstance(symbol.data, dict):
+                continue
+            invariants = symbol.data.get("invariants")
+            if not isinstance(invariants, list):
+                continue
+            for index, invariant in enumerate(invariants):
+                if not isinstance(invariant, str):
+                    continue
+                try:
+                    parse_condition(invariant)
+                except ConditionSyntaxError as error:
+                    self._diag(
+                        symbol.doc,
+                        "semantic",
+                        "error",
+                        "SDL-E504",
+                        f"Invalid invariant expression: {error.message}",
+                        symbol.parts + ["invariants", index],
+                    )
+
     # -- flows (spec sections 2 and 3) --------------------------------------
 
     def _check_flows(self) -> None:
@@ -868,6 +1114,27 @@ class ProjectContext:
                         f"Binding references unknown interface {interface!r}.",
                         ["project", "bindings", index, "interface"],
                     )
+                else:
+                    # Specification section 6.2, rule two: the version of a
+                    # binding must be compatible with the interface. The
+                    # binding names an exact version, so it must be the one the
+                    # project declares.
+                    declared = self.project_scope.symbols[interface]
+                    if (
+                        isinstance(version, str)
+                        and declared.version is not None
+                        and version != declared.version
+                    ):
+                        self._diag(
+                            doc,
+                            "semantic",
+                            "error",
+                            "SDL-E603",
+                            f"Binding asks for interface {interface!r} version "
+                            f"{version!r}, but the project declares version "
+                            f"{declared.version!r}.",
+                            ["project", "bindings", index, "version"],
+                        )
 
                 target = implementations.get(implementation)
                 if target is None:

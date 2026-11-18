@@ -53,7 +53,7 @@ python tests/run_all.py
 | SDL runtime | 10/10 |
 | Assignability | 20/20 |
 | Compatibility | 15/15 |
-| Proposal recipes | 44/44 |
+| Proposal recipes | 97/97 |
 | Every example document | 22/22 validate |
 | Examples unchanged by the test suite | yes |
 

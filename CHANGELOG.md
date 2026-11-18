@@ -81,7 +81,13 @@ version in `VERSION` is the current core version of the working tree.
   (`SDL-E603`). Three more fix the transparency of an alias: an alias used as
   the type of a flow input, a parameter changed to an alias of its own type
   (both accepted), and a parameter changed to an alias of another type (still a
-  breaking change, `SDL-E602`). `tests/recipes.py` is now 44 recipes.
+  breaking change, `SDL-E602`). `tests/recipes.py` is now 97 recipes: a large
+  batch covering error handling and retry (section 3.3.1), flow outputs and
+  state (sections 2.2.1 and 2.3.3), the type-expression rules inherited from
+  Core 0.2 (section 4.2), the interface and implementation rules (sections 5
+  and 6), invariants (section 4.2.1), bindings (section 6.2), identifiers
+  (section 4.3), imports (section 4.1), the schema, the back end (section 7)
+  and the protocol itself (section 8).
 * `tests/test_assignability.py` — the expression-level rules, now including the
   expansion of an alias, of an alias of an `Optional`, and of an alias cycle.
 
@@ -125,6 +131,26 @@ version in `VERSION` is the current core version of the working tree.
   field type, an `outputs.type` — was not looked at, so the simulation caught
   it instead. Both are `SDL-E702` in the referential phase, which is where the
   specification puts them.
+* A Core 1.0 document is now checked against the type-expression rules it
+  inherits from Core 0.2 (section 4.2), whatever shape it is written in. The
+  checker only looked at a `types` document whose root was a *list*; a Core 1.0
+  `types` document is a *mapping* (`types:` then the declarations), so a `Unit`
+  field (`SDL-E405`), a bare generic (`SDL-E406`) and a `Map` key that is not
+  `String`, `Int` or `UUID` (`SDL-E406`) escaped the check whenever no flow read
+  the type. `sdl/semantics/core10.py` now walks every type expression a
+  document can carry — a field, an alias, a method input, a method output, a
+  flow input and a flow output — and applies the arity, `Map` key and `Unit`
+  rules there.
+* An invariant of section 4.2.1 is now parsed. The specification says the 1.0
+  validator checks that an invariant is syntactically correct; the checker did
+  not look at the list at all, so `invariants: ["name >>"]` was accepted. It is
+  now parsed by the condition grammar and refused as `SDL-E504` when it is not
+  an expression.
+* The version of a binding is now checked (section 6.2, rule two). The binding
+  of `examples/hello` names an exact version; the checker never compared it to
+  the version the interface declares, so `version: 9.9.9` was accepted. It is
+  now `SDL-E603` when the two differ. A recipe that changed an interface
+  version and left its binding behind was itself stale, and was corrected.
 
 ### Removed from the known gaps
 
@@ -137,7 +163,11 @@ version in `VERSION` is the current core version of the working tree.
   both back ends;
 * a merged document keeps the comments and the blank lines of the original, so
   a change to a type no longer erases the notes and the grouping a human wrote
-  around it.
+  around it;
+* the type-expression rules of Core 0.2 apply to every shape of a Core 1.0
+  document, not only to a `types` document with a list root;
+* an invariant is parsed, so one that is not an expression is refused;
+* the version of a binding is checked against the interface it names.
 
 ---
 

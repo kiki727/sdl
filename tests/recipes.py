@@ -465,6 +465,21 @@ types:
     )
 
 
+def setup_with_farewell_implementation(root: Path) -> None:
+    """Give the implementation the method the proposal adds to the interface."""
+    source = root / "src" / "greeter.py"
+    source.write_text(
+        source.read_text(encoding="utf-8").replace(
+            "    def greet(self, name: str) -> Greeting:",
+            "    def farewell(self, name: str) -> str:\n"
+            '        """Say goodbye to the person with that name."""\n'
+            '        return f"Bye, {name}!"\n\n'
+            "    def greet(self, name: str) -> Greeting:",
+        ),
+        encoding="utf-8",
+    )
+
+
 # ---------------------------------------------------------------------------
 # The recipes.
 # ---------------------------------------------------------------------------
@@ -551,6 +566,11 @@ RECIPES: list[Recipe] = [
                 value={"name": "String", "locale": "String"},
             ),
             Patch(target="interfaces.sdl.yaml:version", action=REPLACE, value="2.0.0"),
+            Patch(
+                target="project.bindings[Greeter].version",
+                action=REPLACE,
+                value="2.0.0",
+            ),
             Patch(
                 target="flow.sdl.yaml:inputs",
                 action=REPLACE,
@@ -1148,5 +1168,751 @@ RECIPES: list[Recipe] = [
         expect="rejected",
         phase="policy",
         code="SDL-E602",
+    ),
+    # -- error handling and retry (spec section 3.3.1) -----------------------
+    Recipe(
+        name="guard a step with the fail strategy",
+        rule="§3.3.1 on_error: fail terminates the flow",
+        patches=[
+            Patch(
+                target="flow.sdl.yaml:steps[greet].on_error",
+                action=ADD,
+                value="fail",
+            )
+        ],
+        expect="accepted",
+        version="1.0.1",
+    ),
+    Recipe(
+        name="guard a step with the ignore strategy",
+        rule="§3.3.1 on_error: ignore skips the failure",
+        patches=[
+            Patch(
+                target="flow.sdl.yaml:steps[greet].on_error",
+                action=ADD,
+                value="ignore",
+            )
+        ],
+        expect="accepted",
+        version="1.0.1",
+    ),
+    Recipe(
+        name="retry a step with a retry policy",
+        rule="§3.3.1.1 on_error: retry needs a retry block",
+        patches=[
+            Patch(
+                target="flow.sdl.yaml:steps[greet].on_error",
+                action=ADD,
+                value="retry",
+            ),
+            Patch(
+                target="flow.sdl.yaml:steps[greet].retry",
+                action=ADD,
+                value={"attempts": 3},
+            ),
+        ],
+        expect="accepted",
+        version="1.0.1",
+    ),
+    Recipe(
+        name="retry a step without a retry policy",
+        rule="§3.3.1.1 on_error: retry needs a retry block",
+        patches=[
+            Patch(
+                target="flow.sdl.yaml:steps[greet].on_error",
+                action=ADD,
+                value="retry",
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E505",
+    ),
+    Recipe(
+        name="give a step a retry policy without on_error",
+        rule="§3.3.1.1 a retry policy needs on_error: retry",
+        patches=[
+            Patch(
+                target="flow.sdl.yaml:steps[greet].retry",
+                action=ADD,
+                value={"attempts": 3},
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E505",
+    ),
+    Recipe(
+        name="retry a step a zero number of times",
+        rule="§3.3.1.1 retry.attempts is at least one",
+        patches=[
+            Patch(
+                target="flow.sdl.yaml:steps[greet].on_error",
+                action=ADD,
+                value="retry",
+            ),
+            Patch(
+                target="flow.sdl.yaml:steps[greet].retry",
+                action=ADD,
+                value={"attempts": 0},
+            ),
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E505",
+    ),
+    Recipe(
+        name="give a step an unknown error strategy",
+        rule="§3.3.1 the strategies are fail, ignore, retry and goto",
+        patches=[
+            Patch(
+                target="flow.sdl.yaml:steps[greet].on_error",
+                action=ADD,
+                value="explode",
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E506",
+    ),
+    Recipe(
+        name="jump to a step that does not exist",
+        rule="§3.3.1 on_error: goto names a step of the flow",
+        patches=[
+            Patch(
+                target="flow.sdl.yaml:steps[greet].on_error",
+                action=ADD,
+                value="goto nowhere",
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E507",
+    ),
+    Recipe(
+        name="jump to a step of the same flow",
+        rule="§3.3.1 on_error: goto names a step of the flow",
+        patches=[
+            Patch(
+                target="flow.sdl.yaml:steps",
+                action=ADD,
+                value={
+                    "id": "second",
+                    "call": "Greeter::greet",
+                    "mapping": {"name": "name"},
+                    "output_map": {"again": "result"},
+                },
+            ),
+            Patch(
+                target="flow.sdl.yaml:steps[greet].on_error",
+                action=ADD,
+                value="goto second",
+            ),
+        ],
+        expect="accepted",
+        version="1.1.0",
+    ),
+    Recipe(
+        name="jump to the step itself",
+        rule="§3.3.1 on_error: goto names a step of the flow",
+        patches=[
+            Patch(
+                target="flow.sdl.yaml:steps[greet].on_error",
+                action=ADD,
+                value="goto greet",
+            )
+        ],
+        expect="accepted",
+        version="1.0.1",
+    ),
+    # -- flow outputs (spec sections 2.2.1 and 3.3.2) ------------------------
+    Recipe(
+        name="remove the output mapping of a flow that declares outputs",
+        rule="§2.2.1 output_mapping is mandatory when outputs are declared",
+        patches=[
+            Patch(target="flow.sdl.yaml:output_mapping", action=REMOVE, value=None)
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E503",
+    ),
+    Recipe(
+        name="leave a declared output unpopulated",
+        rule="§2.2.1 every declared output must be populated",
+        patches=[
+            Patch(
+                target="flow.sdl.yaml:outputs",
+                action=REPLACE,
+                value={"message": "String", "extra": "String"},
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E503",
+    ),
+    Recipe(
+        name="remove the outputs of a flow",
+        rule="§2.2.1 outputs are optional",
+        patches=[
+            Patch(target="flow.sdl.yaml:outputs", action=REMOVE, value=None),
+            Patch(target="flow.sdl.yaml:output_mapping", action=REMOVE, value=None),
+        ],
+        expect="accepted",
+        version="1.0.1",
+    ),
+    # -- flow state (spec section 2.3.3) -------------------------------------
+    Recipe(
+        name="guard a step with a variable that does not exist",
+        rule="§2.3.3 a condition reads state that exists",
+        patches=[
+            Patch(
+                target="flow.sdl.yaml:steps[greet].condition",
+                action=ADD,
+                value='mystery != ""',
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E502",
+    ),
+    Recipe(
+        name="map a parameter from a variable that does not exist",
+        rule="§2.3.3 a mapping reads state that exists",
+        patches=[
+            Patch(
+                target="flow.sdl.yaml:steps[greet].mapping",
+                action=REPLACE,
+                value={"name": "mystery"},
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E502",
+    ),
+    Recipe(
+        name="omit a parameter a method requires",
+        rule="§2.3.3 the mapping must supply every required parameter",
+        patches=[
+            Patch(target="flow.sdl.yaml:steps[greet].mapping", action=REMOVE, value=None)
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E501",
+    ),
+    Recipe(
+        name="read the output of an earlier step",
+        rule="§2.3.3 a step may read what an earlier step placed in the state",
+        patches=[
+            Patch(
+                target="flow.sdl.yaml:steps",
+                action=ADD,
+                value={
+                    "id": "second",
+                    "call": "Greeter::greet",
+                    "mapping": {"name": "greeting.message"},
+                    "output_map": {"again": "result"},
+                },
+            )
+        ],
+        expect="accepted",
+        version="1.1.0",
+    ),
+    # -- type expressions (spec section 4.2, inherited from Core 0.2) --------
+    Recipe(
+        name="declare an alias that refers to itself",
+        rule="§4.2 an alias chain must not be cyclic",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Loop",
+                action=ADD,
+                value={"id": "Loop", "version": "1.0.0", "type": "Loop"},
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E402",
+    ),
+    Recipe(
+        name="declare two aliases that refer to each other",
+        rule="§4.2 an alias chain must not be cyclic",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:A",
+                action=ADD,
+                value={"id": "A", "version": "1.0.0", "type": "B"},
+            ),
+            Patch(
+                target="types.sdl.yaml:B",
+                action=ADD,
+                value={"id": "B", "version": "1.0.0", "type": "A"},
+            ),
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E402",
+    ),
+    Recipe(
+        name="give a type a field of a type that does not exist",
+        rule="§4.2 a field names a type of the specification",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Greeting.fields",
+                action=REPLACE,
+                value={"message": "Missing"},
+            )
+        ],
+        expect="rejected",
+        phase="referential",
+        code="SDL-E702",
+    ),
+    Recipe(
+        name="add a Map field to a type",
+        rule="§4.2 a field may be a generic type",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Greeting.fields",
+                action=REPLACE,
+                value={"message": "String", "labels": "Map<String, String>"},
+            )
+        ],
+        expect="accepted",
+        version="1.0.1",
+    ),
+    Recipe(
+        name="add a List field to a type",
+        rule="§4.2 a field may be a generic type",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Greeting.fields",
+                action=REPLACE,
+                value={"message": "String", "tags": "List<String>"},
+            )
+        ],
+        expect="accepted",
+        version="1.0.1",
+    ),
+    Recipe(
+        name="give a type a Unit field that no flow reads",
+        rule="§4.2 Unit is not allowed in this position",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Weird",
+                action=ADD,
+                value={"id": "Weird", "version": "1.0.0", "fields": {"x": "Unit"}},
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E405",
+    ),
+    Recipe(
+        name="give a type a bare generic field that no flow reads",
+        rule="§4.2 a generic type needs its arguments",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Weird",
+                action=ADD,
+                value={"id": "Weird", "version": "1.0.0", "fields": {"x": "List"}},
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E406",
+    ),
+    Recipe(
+        name="give a type a Map field whose key is not allowed",
+        rule="§4.2 a Map key is String, Int or UUID",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Weird",
+                action=ADD,
+                value={
+                    "id": "Weird",
+                    "version": "1.0.0",
+                    "fields": {"x": "Map<Float, String>"},
+                },
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E406",
+    ),
+    Recipe(
+        name="declare an alias to Unit",
+        rule="§4.2 Unit is not allowed in this position",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Nothing",
+                action=ADD,
+                value={"id": "Nothing", "version": "1.0.0", "type": "Unit"},
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E405",
+    ),
+    Recipe(
+        name="declare an alias to a bare generic",
+        rule="§4.2 a generic type needs its arguments",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Bad",
+                action=ADD,
+                value={"id": "Bad", "version": "1.0.0", "type": "List"},
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E406",
+    ),
+    Recipe(
+        name="declare an enum with a repeated value",
+        rule="§4.2 the values of an enum are distinct",
+        patches=[
+            Patch(
+                target="types.sdl.yaml:Status",
+                action=ADD,
+                value={"id": "Status", "version": "1.0.0", "enum": ["a", "a"]},
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E211",
+    ),
+    # -- interfaces and implementations (spec sections 5 and 6) --------------
+    Recipe(
+        name="add a method the implementation does not have",
+        rule="§5.3.1 every method of the interface must be implemented",
+        patches=[
+            Patch(
+                target="interfaces.sdl.yaml:methods",
+                action=ADD,
+                value={
+                    "id": "farewell",
+                    "version": "1.0.0",
+                    "inputs": {"name": "String"},
+                    "outputs": {"type": "String"},
+                },
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E604",
+    ),
+    Recipe(
+        name="add a method and implement it",
+        rule="§5.3.1 every method of the interface must be implemented",
+        patches=[
+            Patch(
+                target="interfaces.sdl.yaml:methods",
+                action=ADD,
+                value={
+                    "id": "farewell",
+                    "version": "1.0.0",
+                    "inputs": {"name": "String"},
+                    "outputs": {"type": "String"},
+                },
+            )
+        ],
+        setup=setup_with_farewell_implementation,
+        expect="accepted",
+        version="1.1.0",
+    ),
+    Recipe(
+        name="widen the input of a method to an optional",
+        rule="§5.2 the input of the contract must be accepted by the implementation",
+        patches=[
+            Patch(
+                target="interfaces.sdl.yaml:methods[greet].inputs",
+                action=REPLACE,
+                value={"name": "Optional<String>"},
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E604",
+    ),
+    Recipe(
+        name="change the output of a method to an optional",
+        rule="§5.2 the output of the implementation must satisfy the contract",
+        patches=[
+            Patch(
+                target="interfaces.sdl.yaml:methods[greet].outputs",
+                action=REPLACE,
+                value={"type": "Optional<Greeting>"},
+            )
+        ],
+        expect="rejected",
+        phase="policy",
+        code="SDL-E602",
+    ),
+    Recipe(
+        name="add a parameter the client cannot omit",
+        rule="§5.2 an added parameter must be optional",
+        patches=[
+            Patch(
+                target="interfaces.sdl.yaml:methods[greet].inputs",
+                action=REPLACE,
+                value={"name": "String", "locale": "String"},
+            )
+        ],
+        expect="rejected",
+        phase="policy",
+        code="SDL-E602",
+    ),
+    Recipe(
+        name="rename a parameter of a method",
+        rule="§5.2 the names of the parameters are identical",
+        patches=[
+            Patch(
+                target="interfaces.sdl.yaml:methods[greet].inputs",
+                action=REPLACE,
+                value={"who": "String"},
+            )
+        ],
+        expect="rejected",
+        phase="policy",
+        code="SDL-E602",
+    ),
+    Recipe(
+        name="remove a parameter of a method",
+        rule="§5.2 a parameter the client supplied is gone",
+        patches=[
+            Patch(
+                target="interfaces.sdl.yaml:methods[greet].inputs",
+                action=REPLACE,
+                value={},
+            )
+        ],
+        expect="rejected",
+        phase="policy",
+        code="SDL-E602",
+    ),
+    Recipe(
+        name="add a method whose input is Unit",
+        rule="§4.2 Unit is not allowed in this position",
+        patches=[
+            Patch(
+                target="interfaces.sdl.yaml:methods",
+                action=ADD,
+                value={
+                    "id": "farewell",
+                    "version": "1.0.0",
+                    "inputs": {"name": "Unit"},
+                    "outputs": {"type": "String"},
+                },
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E405",
+    ),
+    # -- invariants (spec section 4.2.1) -------------------------------------
+    Recipe(
+        name="declare a valid invariant",
+        rule="§4.2.1 an invariant is a logical expression",
+        patches=[
+            Patch(
+                target="interfaces.sdl.yaml:invariants",
+                action=ADD,
+                value=['name != ""'],
+            )
+        ],
+        expect="accepted",
+        version="1.0.1",
+    ),
+    Recipe(
+        name="declare an invariant that is not an expression",
+        rule="§4.2.1 an invariant is a logical expression",
+        patches=[
+            Patch(
+                target="interfaces.sdl.yaml:invariants",
+                action=ADD,
+                value=["name >>"],
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E504",
+    ),
+    # -- bindings (spec section 6.2) -----------------------------------------
+    Recipe(
+        name="bind an interface to a version it does not have",
+        rule="§6.2 the version of a binding is compatible with the interface",
+        patches=[
+            Patch(
+                target="project.bindings[Greeter].version",
+                action=REPLACE,
+                value="9.9.9",
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E603",
+    ),
+    Recipe(
+        name="remove the version of a binding",
+        rule="§6.2 the version of a binding is optional",
+        patches=[
+            Patch(
+                target="project.bindings[Greeter].version",
+                action=REMOVE,
+                value=None,
+            )
+        ],
+        expect="accepted",
+        version="1.0.1",
+    ),
+    # -- identifiers (spec section 4.3) --------------------------------------
+    Recipe(
+        name="change the identifier of the project",
+        rule="§4.3 the identifiers of the components are stable",
+        patches=[
+            Patch(target="project.id", action=REPLACE, value="renamed_project")
+        ],
+        expect="rejected",
+        phase="policy",
+        code="SDL-E602",
+    ),
+    Recipe(
+        name="change the identifier of a flow step",
+        rule="§4.3 the identifiers of the components are stable",
+        patches=[
+            Patch(
+                target="flow.sdl.yaml:steps[greet].id",
+                action=REPLACE,
+                value="greet_again",
+            )
+        ],
+        expect="rejected",
+        phase="policy",
+        code="SDL-E602",
+    ),
+    # -- imports (spec section 4.1) ------------------------------------------
+    Recipe(
+        name="add an import of a document twice",
+        rule="§4.1 an import is declared once",
+        patches=[
+            Patch(
+                target="project.imports",
+                action=ADD,
+                value={"path": "types.sdl.yaml"},
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E205",
+    ),
+    Recipe(
+        name="add an import that leaves the project root",
+        rule="§4.1 an import stays inside the project root",
+        patches=[
+            Patch(
+                target="project.imports",
+                action=ADD,
+                value={"path": "../escape.sdl.yaml"},
+            )
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E300",
+    ),
+    # -- schema (envelope and documents) -------------------------------------
+    Recipe(
+        name="add an unknown field to a flow",
+        rule="§2 a document has no field the schema does not declare",
+        patches=[
+            Patch(target="flow.sdl.yaml:totally_unknown", action=ADD, value=1)
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E203",
+    ),
+    Recipe(
+        name="set a backend mode that does not exist",
+        rule="§7.1 the mode is codegen or execute",
+        patches=[
+            Patch(target="project.backend.mode", action=REPLACE, value="teleport")
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E205",
+    ),
+    Recipe(
+        name="give the project a version that is not semver",
+        rule="§8.5 the version of a project is a semver",
+        patches=[
+            Patch(target="project.version", action=REPLACE, value="not-a-version")
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E220",
+    ),
+    Recipe(
+        name="remove the identifier of an interface",
+        rule="§4.3 the identifiers of the components are stable",
+        patches=[
+            Patch(target="interfaces.sdl.yaml:id", action=REMOVE, value=None)
+        ],
+        expect="rejected",
+        phase="policy",
+        code="SDL-E602",
+    ),
+    # -- backend (spec section 7) --------------------------------------------
+    Recipe(
+        name="point a nodejs backend at a python implementation",
+        rule="§7.2 the target must host the languages of the implementations",
+        patches=[
+            Patch(target="project.backend.target", action=REPLACE, value="nodejs")
+        ],
+        expect="rejected",
+        phase="semantic",
+        code="SDL-E606",
+    ),
+    Recipe(
+        name="build the project in codegen mode",
+        rule="§7.1 the mode names how the specification is built",
+        patches=[
+            Patch(target="project.backend.mode", action=REPLACE, value="codegen")
+        ],
+        expect="accepted",
+        version="1.0.1",
+    ),
+    # -- proposal protocol (spec section 8) ----------------------------------
+    Recipe(
+        name="patch the same field twice with different values",
+        rule="§8.3 two patches on one target conflict",
+        patches=[
+            Patch(
+                target="flow.sdl.yaml:steps[greet].condition",
+                action=ADD,
+                value='name != ""',
+            ),
+            Patch(
+                target="flow.sdl.yaml:steps[greet].condition",
+                action=ADD,
+                value='name == ""',
+            ),
+        ],
+        expect="rejected",
+        phase="policy",
+        code="SDL-E704",
+    ),
+    Recipe(
+        name="patch a field that does not exist",
+        rule="§8.3 the target of a patch must resolve",
+        patches=[
+            Patch(target="project.policy.nowhere", action=REPLACE, value=True)
+        ],
+        expect="rejected",
+        phase="referential",
+        code="SDL-E701",
+    ),
+    Recipe(
+        name="a proposal with no patch changes nothing",
+        rule="§8.5 a proposal with no change merges nothing",
+        patches=[],
+        expect="accepted",
+        version="1.0.0",
     ),
 ]
