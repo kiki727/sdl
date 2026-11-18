@@ -82,6 +82,25 @@ def test_the_ir_serialises_deterministically() -> None:
     assert serialization.dumps(result.graph) == serialization.dumps(result.graph)
 
 
+def test_the_resolver_is_repeatable() -> None:
+    """Resolving the same graph twice reproduces it, byte for byte.
+
+    The Semantic Firewall re-derives the references of a patched graph, so the
+    resolver must remove and rebuild its edges without losing what it learned
+    the first time — in particular the shape of a type expression, which the
+    resolved identifier alone does not keep.
+    """
+    from sdl.lowering.resolver import SymbolResolver
+
+    result = _compile(PAYMENT)
+    before = serialization.dumps(result.graph)
+
+    unresolved = SymbolResolver(result.graph).resolve_all()
+
+    assert not unresolved, [item.message for item in unresolved]
+    assert serialization.dumps(result.graph) == before, "the resolver is not repeatable"
+
+
 # ---------------------------------------------------------------------------
 # M4 - nothing is lost
 # ---------------------------------------------------------------------------
@@ -421,6 +440,7 @@ CHECKS = [
     test_hero_site_compiles,
     test_the_ir_is_deterministic,
     test_the_ir_serialises_deterministically,
+    test_the_resolver_is_repeatable,
     test_the_project_keeps_its_configuration,
     test_the_interface_keeps_its_methods_and_invariants,
     test_the_flow_keeps_its_outputs_and_error_handling,

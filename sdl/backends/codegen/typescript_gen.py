@@ -343,14 +343,15 @@ class TypeScriptCodegen:
         if not symbol.fields:
             lines.append("}")
             return "\n".join(lines) + "\n"
-        # The resolved identifier of a field is its base type, and the
-        # arguments of a generic are kept beside it. The shape of the reference
-        # is not kept for a field, so the flat pair is used, as the Python back
-        # end does.
+        # The resolved identifier of a field is its base type, and the arguments
+        # of a generic are kept beside it. The shape of the reference is kept
+        # as well, and it is preferred, so that a union or a nested generic
+        # keeps its members.
         arguments_of = symbol.metadata.get("field_type_arguments", {})
+        references = symbol.metadata.get("field_type_refs", {})
         for field in symbol.fields:
             rendered = self._render_type(
-                None,
+                references.get(field.name),
                 imports,
                 field.type_id,
                 arguments_of.get(field.name),
@@ -496,11 +497,12 @@ class TypeScriptCodegen:
         imports: Set[str] = set()
 
         inputs = symbol.metadata.get("inputs", {})
+        references = symbol.metadata.get("state_type_refs") or {}
         parameters = []
         for name in sorted(inputs):
             variable = symbol.state_definitions.get(name)
             type_id = variable.type_id if variable else None
-            rendered = self._render_type(None, imports, type_id)
+            rendered = self._render_type(references.get(name), imports, type_id)
             parameters.append(f"{name}: {rendered}")
         parameters.append("registry: Registry")
 

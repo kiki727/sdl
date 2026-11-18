@@ -40,6 +40,7 @@ from sdl.ir.symbols import (
     ProjectSymbol,
     Symbol,
     TypeKind,
+    TypeRef,
     TypeSymbol,
 )
 
@@ -191,10 +192,12 @@ class PythonCodegen:
         imports: Set[str],
         arguments: List[Any] | None = None,
     ) -> str:
-        """The Python type of a symbol, collecting the imports it needs.
+        """The Python type of a flat identifier and its arguments.
 
-        A generic built-in keeps its arguments, so that ``Result<Payment,
-        Error>`` becomes ``Result[Payment, Error]`` and not ``Any``.
+        This is the fallback when the resolved reference is not available. It
+        is enough for a name or a single level of generic, but it cannot keep
+        the arguments of a nested generic or the members of a union; use
+        :meth:`_render_type` for those.
         """
         if type_id is None:
             return "Any"
@@ -225,6 +228,62 @@ class PythonCodegen:
 
         imports.add(f"from ..types.{snake(symbol.name)} import {symbol.name}")
         return symbol.name
+
+    def _render_type(
+        self,
+        reference: TypeRef | None,
+        imports: Set[str],
+        type_id: Any = None,
+        arguments: List[Any] | None = None,
+    ) -> str:
+        """The Python type of a resolved reference.
+
+        The reference keeps the shape of a union and of a nested generic, so
+        ``List<Optional<String>>`` becomes ``List[Optional[str]]`` and
+        ``String | Int`` becomes ``Union[str, int]``. When there is no
+        reference, the flat identifier and its arguments are used.
+        """
+        if reference is not None:
+            return self._render_reference(reference, imports)
+        return self._python_type(type_id, imports, arguments)
+
+    def _render_reference(self, reference: TypeRef, imports: Set[str]) -> str:
+        """Render a resolved :class:`TypeRef`, collecting the imports it needs."""
+        if reference.kind == "union":
+            members = [
+                self._render_reference(item, imports) for item in reference.arguments
+            ]
+            if not members:
+                return "Any"
+            if len(members) == 1:
+                return members[0]
+            imports.add("from typing import Union")
+            return "Union[" + ", ".join(members) + "]"
+
+        symbol = self.graph.get_symbol(reference.base) if reference.base else None
+        if symbol is None or not isinstance(symbol, TypeSymbol):
+            return "Any"
+
+        if not symbol.metadata.get("builtin"):
+            imports.add(f"from ..types.{snake(symbol.name)} import {symbol.name}")
+            return symbol.name
+
+        entry = SCALARS.get(symbol.name)
+        if entry is None:
+            return "Any"
+        rendered, statement = entry
+        if statement:
+            imports.add(statement)
+        if symbol.name in GENERIC_BUILTINS and reference.arguments:
+            rendered = (
+                f"{rendered}["
+                + ", ".join(
+                    self._render_reference(item, imports)
+                    for item in reference.arguments
+                )
+                + "]"
+            )
+        return rendered
 
     def _class_of_module(self, module_name: str) -> str:
         for symbol in self._declared_types():
@@ -537,9 +596,13 @@ class Result(Generic[T, E]):
                 lines.append("    pass")
                 return "\n".join(lines) + "\n"
             arguments_of = symbol.metadata.get("field_type_arguments", {})
+            references = symbol.metadata.get("field_type_refs", {})
             for field in symbol.fields:
-                rendered = self._python_type(
-                    field.type_id, imports, arguments_of.get(field.name)
+                rendered = self._render_type(
+                    references.get(field.name),
+                    imports,
+                    field.type_id,
+                    arguments_of.get(field.name),
                 )
                 lines.append(f"    {field.name}: {rendered}")
             return "\n".join(lines) + "\n"
@@ -549,7 +612,11 @@ class Result(Generic[T, E]):
     def _alias_body(self, symbol: TypeSymbol):
         def build(imports: Set[str]) -> str:
             target = symbol.metadata.get("alias_target")
-            rendered = self._python_type(target, imports) if target else "Any"
+            rendered = (
+                self._render_type(symbol.metadata.get("alias_type_ref"), imports, target)
+                if target
+                else "Any"
+            )
             lines = [
                 "",
                 "",
@@ -591,13 +658,17 @@ class Result(Generic[T, E]):
         for method in methods:
             parameters = ["self"]
             for parameter in method.parameters:
-                rendered = self._python_type(
-                    parameter.type_id, imports, parameter.type_arguments
+                rendered = self._render_type(
+                    parameter.type_ref,
+                    imports,
+                    parameter.type_id,
+                    parameter.type_arguments,
                 )
                 parameters.append(f"{parameter.name}: {rendered}")
-            returns = self._python_type(
-                method.return_type_id,
+            returns = self._render_type(
+                method.metadata.get("return_type_ref"),
                 imports,
+                method.return_type_id,
                 method.metadata.get("return_type_arguments"),
             )
             signatures.append((method, parameters, returns))
@@ -650,13 +721,17 @@ class Result(Generic[T, E]):
         for method in sorted(implemented, key=lambda item: item.name):
             parameters = ["self"]
             for parameter in method.parameters:
-                rendered = self._python_type(
-                    parameter.type_id, imports, parameter.type_arguments
+                rendered = self._render_type(
+                    parameter.type_ref,
+                    imports,
+                    parameter.type_id,
+                    parameter.type_arguments,
                 )
                 parameters.append(f"{parameter.name}: {rendered}")
-            returns = self._python_type(
-                method.return_type_id,
+            returns = self._render_type(
+                method.metadata.get("return_type_ref"),
                 imports,
+                method.return_type_id,
                 method.metadata.get("return_type_arguments"),
             )
             signatures.append((method, parameters, returns))
@@ -711,13 +786,17 @@ class Result(Generic[T, E]):
         for function in functions:
             parameters = []
             for parameter in function.parameters:
-                rendered = self._python_type(
-                    parameter.type_id, imports, parameter.type_arguments
+                rendered = self._render_type(
+                    parameter.type_ref,
+                    imports,
+                    parameter.type_id,
+                    parameter.type_arguments,
                 )
                 parameters.append(f"{parameter.name}: {rendered}")
-            returns = self._python_type(
-                function.return_type_id,
+            returns = self._render_type(
+                function.metadata.get("return_type_ref"),
                 imports,
+                function.return_type_id,
                 function.metadata.get("return_type_arguments"),
             )
             signatures.append((function, parameters, returns))
@@ -747,11 +826,12 @@ class Result(Generic[T, E]):
         imports: Set[str] = set()
 
         inputs = symbol.metadata.get("inputs", {})
+        references = symbol.metadata.get("state_type_refs") or {}
         parameters = []
         for name in sorted(inputs):
             variable = symbol.state_definitions.get(name)
             type_id = variable.type_id if variable else None
-            rendered = self._python_type(type_id, imports)
+            rendered = self._render_type(references.get(name), imports, type_id)
             parameters.append(f"{name}: {rendered}")
 
         block = self._import_block(

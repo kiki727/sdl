@@ -201,22 +201,34 @@ class SymbolResolver:
         for symbol in self.graph.symbols.values():
             if not isinstance(symbol, TypeSymbol):
                 continue
+            references = symbol.metadata.setdefault("field_type_refs", {})
             for field in symbol.fields:
-                resolved, arguments = self._resolve_type_expression(str(field.type_id))
+                expression = str(field.type_id)
+                if expression in self.graph.symbols and references.get(field.name) is not None:
+                    # The graph was resolved before. The identifier is now the
+                    # base of the type, and the shape kept beside it is the only
+                    # source of the arguments and of the members of a union, so
+                    # it is left alone.
+                    continue
+                # ``expression`` is the type expression the document wrote, and
+                # it is the only source of the shape: the resolved identifier
+                # that replaces it is a bare name and would lose the arguments
+                # of a generic and the members of a union.
+                resolved, arguments = self._resolve_type_expression(expression)
                 if resolved is None:
                     self._report(
                         symbol.id,
                         "type",
-                        str(field.type_id),
+                        expression,
                         f"Field {field.name!r} of type {symbol.name!r} refers to an unknown "
-                        f"type {field.type_id!r}.",
+                        f"type {expression!r}.",
                     )
                     continue
                 field.type_id = resolved
                 symbol.metadata.setdefault("field_types", {})[field.name] = resolved
                 symbol.metadata.setdefault("field_type_arguments", {})[field.name] = list(arguments)
-                reference, _ = self._type_reference(str(field.type_id))
-                symbol.metadata.setdefault("field_type_refs", {})[field.name] = reference
+                reference, _ = self._type_reference(expression)
+                references[field.name] = reference
                 field.optional = self._is_optional_reference(reference)
 
             expression = symbol.metadata.get("type_expression")
@@ -346,20 +358,26 @@ class SymbolResolver:
             if not isinstance(symbol, FlowSymbol):
                 continue
 
+            references = symbol.metadata.setdefault("state_type_refs", {})
             for variable in symbol.state_definitions.values():
-                resolved, _ = self._resolve_type_expression(str(variable.type_id))
+                expression = str(variable.type_id)
+                if expression in self.graph.symbols and references.get(variable.name) is not None:
+                    # Resolved before, or created by a step and given its shape
+                    # from the return type below. Either way it is left alone.
+                    continue
+                resolved, _ = self._resolve_type_expression(expression)
                 if resolved is None:
                     self._report(
                         symbol.id,
                         "state",
-                        str(variable.type_id),
+                        expression,
                         f"Input {variable.name!r} of flow {symbol.name!r} refers to an "
-                        f"unknown type {variable.type_id!r}.",
+                        f"unknown type {expression!r}.",
                     )
                     continue
                 variable.type_id = resolved
-                reference, _ = self._type_reference(str(variable.type_id))
-                symbol.metadata.setdefault("state_type_refs", {})[variable.name] = reference
+                reference, _ = self._type_reference(expression)
+                references[variable.name] = reference
 
             for step_id in symbol.metadata.get("step_order", []):
                 step = self.graph.get_symbol(step_id)

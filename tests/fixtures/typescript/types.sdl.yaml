@@ -22,6 +22,18 @@ types:
       id: UUID
       note: Optional<String>
       tags: List<String>
+      links: List<Optional<String>>
       scores: Map<String, Int>
+      mixed: String | Int
       priority: Priority
       reference: Reference
+
+  Mixed:
+    id: Mixed
+    version: "1.0.0"
+    type: String | Int
+
+  Deep:
+    id: Deep
+    version: "1.0.0"
+    type: List<Optional<String>>

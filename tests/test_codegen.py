@@ -333,15 +333,52 @@ def test_the_typescript_types_are_generated() -> None:
 
     order = files["src/types/order.ts"]
     assert "export interface Order {" in order, order
-    assert "note: string | null;" in order, order
+    assert "note?: string | null;" in order, order
     assert "tags: string[];" in order, order
+    assert "links: (string | null)[];" in order, order
     assert "scores: Record<string, number>;" in order, order
+    assert "mixed: string | number;" in order, order
 
     priority = files["src/types/priority.ts"]
     assert 'export type Priority = "low" | "normal" | "high";' in priority, priority
 
     reference = files["src/types/reference.ts"]
     assert "export type Reference = string;" in reference, reference
+
+    mixed = files["src/types/mixed.ts"]
+    assert "export type Mixed = string | number;" in mixed, mixed
+
+    deep = files["src/types/deep.ts"]
+    assert "export type Deep = (string | null)[];" in deep, deep
+
+
+def test_a_union_and_a_nested_generic_are_generated() -> None:
+    """A union and a nested generic keep their members in the Python back end.
+
+    The resolved identifier of a field is a bare name, so the shape of the
+    expression has to survive beside it. Otherwise ``List<Optional<String>>``
+    would collapse to ``List`` and ``String | Int`` to ``str``.
+    """
+    files = _generate(TYPESCRIPT)
+    order = files["src/types/order.py"]
+
+    assert "note: Optional[str]" in order, order
+    assert "tags: List[str]" in order, order
+    assert "links: List[Optional[str]]" in order, order
+    assert "mixed: Union[str, int]" in order, order
+    assert "from typing import Union" in order, order
+
+    deep = files["src/types/deep.py"]
+    assert "Deep = List[Optional[str]]" in deep, deep
+
+
+def test_a_generic_flow_input_is_generated() -> None:
+    """The Flow State keeps the shape of an input that is a generic."""
+    python = _generate(TYPESCRIPT)["src/flows/describe_order.py"]
+    assert "filters: List[str]" in python, python
+
+    typescript = _generate_typescript(TYPESCRIPT)["src/flows/describe_order.ts"]
+    assert "filters: string[]" in typescript, typescript
 
 
 def test_the_typescript_interfaces_are_generated() -> None:
@@ -428,6 +465,8 @@ CHECKS = [
     test_the_typescript_error_strategies_are_generated,
     test_the_typescript_bindings_are_registered,
     test_the_typescript_types_are_generated,
+    test_a_union_and_a_nested_generic_are_generated,
+    test_a_generic_flow_input_is_generated,
     test_the_typescript_interfaces_are_generated,
     test_the_typescript_generic_return_type_is_generated,
     test_the_typescript_project_files_are_generated,

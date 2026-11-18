@@ -63,13 +63,32 @@ version in `VERSION` is the current core version of the working tree.
   implementation (`tests/recipes.py`, now 30 recipes).
 * `tests/test_assignability.py` — the expression-level rules.
 
+### Fixed
+
+* A type expression that is a union or a nested generic keeps its members in
+  both back ends. The resolver computed the shape of a field, of a flow input
+  and of a `type` alias from the *resolved identifier*, which is a bare name, so
+  `List<Optional<String>>` became `List` (or `any[]`) and `String | Int` became
+  the first member. The shape is now derived from the expression the document
+  wrote (`sdl/lowering/resolver.py`), and both generators render it
+  (`sdl/backends/codegen/python_gen.py`, `.../typescript_gen.py`). A field of
+  type `Optional<T>` is now marked optional, which the TypeScript interface
+  writes as `field?: T | null`. The resolver stays repeatable: a second pass
+  over the same graph reproduces it byte for byte.
+* The code generation test is now 28 checks: it covers a union, a nested
+  generic and a generic flow input in both back ends. The pipeline integration
+  test gained a check that the resolver is repeatable
+  (`tests/test_integration.py`).
+
 ### Removed from the known gaps
 
 * a project whose `backend.target` is `nodejs` now builds, so `examples/hero_site`
   compiles to TypeScript;
 * the form of the migration plan is now defined and checked;
 * the policy no longer requires a version increment for a signature change that
-  does not break the contract.
+  does not break the contract;
+* a union or a nested generic keeps its members in the generated source, in
+  both back ends.
 
 ---
 
